@@ -1,0 +1,139 @@
+import pg from "pg";
+import { decryptSecret, encryptSecret } from "./tokenCipher.js";
+
+const { Pool } = pg;
+
+export interface ActorRef {
+  provider: string;
+  providerUserId: string;
+}
+
+export interface GoogleConnectionInput extends ActorRef {
+  googleSub?: string | null;
+  email?: string | null;
+  refreshToken: string;
+  driveRootFolderId: string;
+}
+
+export interface GoogleDriveConnection {
+  userId: string;
+  provider: string;
+  providerUserId: string;
+  googleSub?: string | null;
+  email?: string | null;
+  refreshToken: string;
+  driveRootFolderId: string;
+}
+
+export function normalizeActor(actor: ActorRef): ActorRef {
+  const provider = actor.provider.trim().toLowerCase();
+  const providerUserId = actor.providerUserId.trim();
+  if (!provider) {
+    throw new Error("provider is required");
+  }
+  if (!providerUserId) {
+    throw new Error("providerUserId is required");
+  }
+  return { provider, providerUserId };
+}
+
+export class PostgresGoogleConnectionRepository {
+  private readonly pool: pg.Pool;
+
+  constructor(
+    databaseUrl = process.env.DATABASE_URL,
+    private readonly encryptionKey = process.env.TOKEN_ENCRYPTION_KEY
+  ) {
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL is required");
+    }
+    this.pool = new Pool({ connectionString: databaseUrl });
+  }
+
+  async upsertConnection(input: GoogleConnectionInput): Promise<GoogleDriveConnection> {
+    const actor = normalizeActor(input);
+    const encryptedRefreshToken = encryptSecret(input.refreshToken, this.encryptionKey);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const userResult = await client.query<{ id: string }>(
+        `INSERT INTO memory_users (provider, provider_user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (provider, provider_user_id)
+         DO UPDATE SET updated_at = now()
+         RETURNING id`,
+        [actor.provider, actor.providerUserId]
+      );
+      const userId = userResult.rows[0].id;
+      await client.query(
+        `INSERT INTO google_connections (
+          user_id, google_sub, email, encrypted_refresh_token, drive_root_folder_id
+        ) VALUES (
+          $1, $2, $3, $4, $5
+        )
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+          google_sub = EXCLUDED.google_sub,
+          email = EXCLUDED.email,
+          encrypted_refresh_token = EXCLUDED.encrypted_refresh_token,
+          drive_root_folder_id = EXCLUDED.drive_root_folder_id,
+          updated_at = now()`,
+        [userId, input.googleSub ?? null, input.email ?? null, encryptedRefreshToken, input.driveRootFolderId]
+      );
+      await client.query("COMMIT");
+      return {
+        userId,
+        provider: actor.provider,
+        providerUserId: actor.providerUserId,
+        googleSub: input.googleSub,
+        email: input.email,
+        refreshToken: input.refreshToken,
+        driveRootFolderId: input.driveRootFolderId
+      };
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getConnection(actorInput: ActorRef): Promise<GoogleDriveConnection | undefined> {
+    const actor = normalizeActor(actorInput);
+    const result = await this.pool.query<{
+      user_id: string;
+      provider: string;
+      provider_user_id: string;
+      google_sub: string | null;
+      email: string | null;
+      encrypted_refresh_token: string;
+      drive_root_folder_id: string;
+    }>(
+      `SELECT
+        gc.user_id,
+        u.provider,
+        u.provider_user_id,
+        gc.google_sub,
+        gc.email,
+        gc.encrypted_refresh_token,
+        gc.drive_root_folder_id
+       FROM google_connections gc
+       JOIN memory_users u ON u.id = gc.user_id
+       WHERE u.provider = $1 AND u.provider_user_id = $2`,
+      [actor.provider, actor.providerUserId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return undefined;
+    }
+    return {
+      userId: row.user_id,
+      provider: row.provider,
+      providerUserId: row.provider_user_id,
+      googleSub: row.google_sub,
+      email: row.email,
+      refreshToken: decryptSecret(row.encrypted_refresh_token, this.encryptionKey),
+      driveRootFolderId: row.drive_root_folder_id
+    };
+  }
+}
