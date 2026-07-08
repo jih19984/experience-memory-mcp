@@ -19,6 +19,7 @@ describe("HTTP MCP endpoint", () => {
     const config = resolveHttpServerConfig({ MCP_HTTP_PATH: "/mcp" });
 
     expect(shouldHandleMcpRequest(new Request("http://localhost:3000/mcp", { method: "POST" }), config)).toBe(true);
+    expect(shouldHandleMcpRequest(new Request("http://localhost:3000/", { method: "POST" }), config)).toBe(true);
     expect(shouldHandleMcpRequest(new Request("http://localhost:3000/healthz", { method: "GET" }), config)).toBe(false);
   });
 

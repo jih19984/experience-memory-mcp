@@ -42,7 +42,8 @@ export function createHealthResponse(): Response {
 }
 
 export function shouldHandleMcpRequest(request: Request, config: Pick<HttpServerConfig, "mcpPath">): boolean {
-  return new URL(request.url).pathname === config.mcpPath;
+  const pathname = new URL(request.url).pathname;
+  return pathname === config.mcpPath || (pathname === "/" && request.method !== "GET" && request.method !== "HEAD");
 }
 
 export function extractActorFromRequest(
@@ -76,7 +77,7 @@ export async function startHttpServer(config: HttpServerConfig = resolveHttpServ
     try {
       const request = toWebRequest(nodeRequest);
       const pathname = new URL(request.url).pathname;
-      if (pathname === config.healthPath) {
+      if (pathname === config.healthPath || (pathname === "/" && (request.method === "GET" || request.method === "HEAD"))) {
         await writeWebResponse(nodeResponse, createHealthResponse());
         return;
       }
