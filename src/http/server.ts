@@ -1,8 +1,11 @@
 import { createServer, type IncomingHttpHeaders, type IncomingMessage, type ServerResponse } from "node:http";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createExperienceMemoryServer } from "../mcp/server.js";
-import { getConfiguredExperienceMemoryService, type ExperienceActor } from "../services/configuredService.js";
-import { PostgresGoogleConnectionRepository } from "../services/googleConnections.js";
+import {
+  createGoogleConnectionRepository,
+  getConfiguredExperienceMemoryService,
+  type ExperienceActor
+} from "../services/configuredService.js";
 import {
   createExperienceMemoryRootFolder,
   DEFAULT_GOOGLE_REDIRECT_URI,
@@ -135,7 +138,7 @@ export async function handleGoogleOAuthCallback(request: Request): Promise<Respo
     return htmlResponse("Google did not return a refresh token. Revoke app access and try again.", 400);
   }
   const rootFolder = await createExperienceMemoryRootFolder({ clientId, clientSecret, redirectUri, refreshToken });
-  const connections = new PostgresGoogleConnectionRepository();
+  const connections = createGoogleConnectionRepository();
   await connections.upsertConnection({
     provider: actor.provider,
     providerUserId: actor.providerUserId,

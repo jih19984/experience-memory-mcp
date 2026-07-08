@@ -2,7 +2,7 @@
 
 사진과 짧은 메모를 하나의 경험 기억으로 저장하고, 나중에 자연어로 다시 찾는 MCP 서버입니다.
 
-이 MVP는 호출 LLM 위임형입니다. 카카오톡/ChatGPT/Claude 같은 대화 중인 LLM이 사진과 메모를 보고 제목, 요약, 태그, 감정을 정리한 뒤 MCP tool을 호출합니다. MCP 서버는 AI API를 다시 호출하지 않고, 사진 원본과 Markdown 메모를 Google Drive에 저장하고 메타데이터를 PostgreSQL에 저장합니다.
+이 MVP는 호출 LLM 위임형입니다. 카카오톡/ChatGPT/Claude 같은 대화 중인 LLM이 사진과 메모를 보고 제목, 요약, 태그, 감정을 정리한 뒤 MCP tool을 호출합니다. MCP 서버는 AI API를 다시 호출하지 않고, 사진 원본과 Markdown 메모를 Google Drive에 저장하고 검색용 메타데이터를 저장합니다.
 
 ## Tools
 
@@ -15,29 +15,26 @@
 ```bash
 npm install
 cp .env.example .env
-npm run db:init
-npm run db:check
 ```
 
-`.env`에 PostgreSQL, Google Drive OAuth 값을 설정합니다.
+`.env`에 Google Drive OAuth 값을 설정합니다. `DATABASE_URL`이 있으면 PostgreSQL을 사용하고, 없으면 PlayMCP in KC 제출용 local JSON 저장소를 사용합니다.
 
 ```env
-DATABASE_URL=
 TOKEN_ENCRYPTION_KEY=
 PORT=8000
 MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
 GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
-MCP_EMBEDDED_POSTGRES=1
+EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 ```
 
-Google Drive 연동은 다중 사용자 actor 방식을 기본으로 사용합니다. 각 사용자가 `connectGoogleDrive` tool이 반환하는 Google OAuth URL을 열어 로그인하면, actor별 refresh token과 Drive root folder id가 PostgreSQL에 암호화 저장됩니다.
+Google Drive 연동은 다중 사용자 actor 방식을 기본으로 사용합니다. 각 사용자가 `connectGoogleDrive` tool이 반환하는 Google OAuth URL을 열어 로그인하면, actor별 refresh token과 Drive root folder id가 암호화 저장됩니다.
 
 단일 사용자 `.env` 방식도 로컬 테스트용으로만 지원합니다. 이 경우 `GOOGLE_REFRESH_TOKEN`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`에 들어간 계정의 Drive에 저장되므로 public/multi-user 배포에는 사용하지 않습니다.
 
-Google Drive 또는 PostgreSQL 설정이 없으면 MCP는 local storage로 대체 저장하지 않고 명확한 설정 오류를 반환합니다.
+Google Drive 연결 전에는 `connectGoogleDrive`로 사용자 개인 Drive를 먼저 연결해야 합니다.
 
 ## Google Drive 연결
 
@@ -64,13 +61,13 @@ GOOGLE_DRIVE_ROOT_FOLDER_ID=...
 
 ### 다중 사용자 연결
 
-actor별 Google Drive 연결을 저장하려면 `.env`에 `DATABASE_URL`, `TOKEN_ENCRYPTION_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`을 설정한 뒤 아래처럼 실행합니다.
+actor별 Google Drive 연결을 로컬에서 저장하려면 `.env`에 `TOKEN_ENCRYPTION_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`을 설정한 뒤 아래처럼 실행합니다.
 
 ```bash
 npm run google:auth -- --actor-provider kakao --actor-id kakao-user-id
 ```
 
-연결이 완료되면 refresh token과 Drive root folder id가 PostgreSQL에 암호화 저장됩니다. MCP를 stdio로 해당 actor에 고정 실행할 때는 아래 환경변수를 지정합니다.
+연결이 완료되면 refresh token과 Drive root folder id가 저장소에 암호화 저장됩니다. MCP를 stdio로 해당 actor에 고정 실행할 때는 아래 환경변수를 지정합니다.
 
 ```env
 EXPERIENCE_MEMORY_ACTOR_PROVIDER=kakao
@@ -96,7 +93,9 @@ npm start
 기본 실행은 PlayMCP in KC 배포용 HTTP transport입니다.
 
 ```text
+GET  /
 GET  /healthz
+POST /
 POST /mcp
 ```
 
@@ -119,16 +118,15 @@ PlayMCP in KC의 "Git 소스 빌드" 방식으로 등록할 수 있습니다.
 
 Docker 컨테이너는 기본적으로 `PORT=8000`에서 HTTP MCP endpoint를 엽니다. PlayMCP in KC 등록 화면의 `container_port`도 `8000`으로 둡니다.
 
-공모전 제출용 Docker 이미지는 외부 DB 없이 뜰 수 있도록 컨테이너 내부에 임시 PostgreSQL을 함께 실행합니다.
+공모전 제출용 Docker 이미지는 외부 DB 없이 뜰 수 있도록 local JSON 저장소를 사용합니다.
 
 ```env
-MCP_EMBEDDED_POSTGRES=1
+EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
 ```
 
-이 모드는 컨테이너 재시작/재배포 시 DB 데이터가 유지된다는 보장이 없습니다. 실제 운영 또는 장기 유지 단계에서는 외부 PostgreSQL을 만들고 아래처럼 전환합니다.
+이 모드는 컨테이너 재시작/재배포 시 데이터가 유지된다는 보장이 없습니다. 실제 운영 또는 장기 유지 단계에서는 외부 PostgreSQL을 만들고 아래처럼 전환합니다.
 
 ```env
-MCP_EMBEDDED_POSTGRES=0
 DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/experience_memory
 ```
 
@@ -150,7 +148,7 @@ DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/experience_memory
 MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
 GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
-MCP_EMBEDDED_POSTGRES=1
+EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
 ```
 
 시크릿:
@@ -161,7 +159,7 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 ```
 
-중요: `GOOGLE_REFRESH_TOKEN`과 `GOOGLE_DRIVE_ROOT_FOLDER_ID`는 PlayMCP in KC 등록 화면에 넣지 않습니다. 이 값들은 각 사용자가 Google OAuth를 완료한 뒤 서버 DB에 사용자별로 저장됩니다.
+중요: `GOOGLE_REFRESH_TOKEN`과 `GOOGLE_DRIVE_ROOT_FOLDER_ID`는 PlayMCP in KC 등록 화면에 넣지 않습니다. 이 값들은 각 사용자가 Google OAuth를 완료한 뒤 사용자별로 저장됩니다.
 
 Endpoint URL이 발급되면 Google Cloud Console의 OAuth Client에 아래 Authorized redirect URI를 추가합니다.
 

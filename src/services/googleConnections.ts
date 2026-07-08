@@ -1,3 +1,6 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { decryptSecret, encryptSecret } from "./tokenCipher.js";
 
@@ -135,5 +138,86 @@ export class PostgresGoogleConnectionRepository {
       refreshToken: decryptSecret(row.encrypted_refresh_token, this.encryptionKey),
       driveRootFolderId: row.drive_root_folder_id
     };
+  }
+}
+
+interface LocalGoogleConnectionRow {
+  userId: string;
+  provider: string;
+  providerUserId: string;
+  googleSub?: string | null;
+  email?: string | null;
+  encryptedRefreshToken: string;
+  driveRootFolderId: string;
+}
+
+export class LocalGoogleConnectionRepository {
+  constructor(
+    private readonly filePath = path.join(process.env.EXPERIENCE_MEMORY_DATA_DIR ?? "/tmp/experience-memory", "google-connections.json"),
+    private readonly encryptionKey = process.env.TOKEN_ENCRYPTION_KEY
+  ) {}
+
+  async upsertConnection(input: GoogleConnectionInput): Promise<GoogleDriveConnection> {
+    const actor = normalizeActor(input);
+    const rows = await this.readRows();
+    const existingIndex = rows.findIndex(
+      (row) => row.provider === actor.provider && row.providerUserId === actor.providerUserId
+    );
+    const userId = existingIndex >= 0 ? rows[existingIndex].userId : randomUUID();
+    const row: LocalGoogleConnectionRow = {
+      userId,
+      provider: actor.provider,
+      providerUserId: actor.providerUserId,
+      googleSub: input.googleSub ?? null,
+      email: input.email ?? null,
+      encryptedRefreshToken: encryptSecret(input.refreshToken, this.encryptionKey),
+      driveRootFolderId: input.driveRootFolderId
+    };
+    if (existingIndex >= 0) {
+      rows[existingIndex] = row;
+    } else {
+      rows.push(row);
+    }
+    await this.writeRows(rows);
+    return {
+      userId,
+      provider: actor.provider,
+      providerUserId: actor.providerUserId,
+      googleSub: input.googleSub,
+      email: input.email,
+      refreshToken: input.refreshToken,
+      driveRootFolderId: input.driveRootFolderId
+    };
+  }
+
+  async getConnection(actorInput: ActorRef): Promise<GoogleDriveConnection | undefined> {
+    const actor = normalizeActor(actorInput);
+    const rows = await this.readRows();
+    const row = rows.find((item) => item.provider === actor.provider && item.providerUserId === actor.providerUserId);
+    if (!row) {
+      return undefined;
+    }
+    return {
+      userId: row.userId,
+      provider: row.provider,
+      providerUserId: row.providerUserId,
+      googleSub: row.googleSub,
+      email: row.email,
+      refreshToken: decryptSecret(row.encryptedRefreshToken, this.encryptionKey),
+      driveRootFolderId: row.driveRootFolderId
+    };
+  }
+
+  private async readRows(): Promise<LocalGoogleConnectionRow[]> {
+    try {
+      return JSON.parse(await readFile(this.filePath, "utf8")) as LocalGoogleConnectionRow[];
+    } catch {
+      return [];
+    }
+  }
+
+  private async writeRows(rows: LocalGoogleConnectionRow[]): Promise<void> {
+    await mkdir(path.dirname(this.filePath), { recursive: true });
+    await writeFile(this.filePath, JSON.stringify(rows, null, 2), "utf8");
   }
 }

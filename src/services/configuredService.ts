@@ -1,7 +1,8 @@
 import { ExperienceMemoryService } from "./memoryService.js";
 import { GoogleDriveStorage } from "./googleDrive.js";
-import { PostgresGoogleConnectionRepository } from "./googleConnections.js";
+import { LocalGoogleConnectionRepository, PostgresGoogleConnectionRepository } from "./googleConnections.js";
 import { PostgresMemoryRepository } from "./database.js";
+import { LocalMemoryRepository } from "./localAdapters.js";
 
 export interface ExperienceActor {
   provider: string;
@@ -38,7 +39,7 @@ export async function getConfiguredExperienceMemoryService(
     });
 
   if (actor) {
-    const connections = new PostgresGoogleConnectionRepository();
+    const connections = createGoogleConnectionRepository();
     const connection = await connections.getConnection(actor);
     if (!connection) {
       throw new Error(`Google Drive is not connected for actor ${actor.provider}:${actor.providerUserId}`);
@@ -50,12 +51,20 @@ export async function getConfiguredExperienceMemoryService(
         refreshToken: connection.refreshToken,
         rootFolderId: connection.driveRootFolderId
       }),
-      repo: new PostgresMemoryRepository(undefined, connection.userId)
+      repo: createMemoryRepository(connection.userId)
     });
   }
 
   return new ExperienceMemoryService({
     drive: new GoogleDriveStorage(),
-    repo: new PostgresMemoryRepository()
+    repo: createMemoryRepository()
   });
+}
+
+export function createGoogleConnectionRepository() {
+  return process.env.DATABASE_URL ? new PostgresGoogleConnectionRepository() : new LocalGoogleConnectionRepository();
+}
+
+function createMemoryRepository(userId?: string) {
+  return process.env.DATABASE_URL ? new PostgresMemoryRepository(undefined, userId) : new LocalMemoryRepository();
 }

@@ -13,10 +13,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV MCP_TRANSPORT=http
 ENV PORT=8000
-ENV MCP_EMBEDDED_POSTGRES=1
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends postgresql-15 postgresql-client-15 \
-  && rm -rf /var/lib/apt/lists/*
+ENV EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
