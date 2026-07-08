@@ -7,10 +7,10 @@ import {
 } from "../src/http/server.js";
 
 describe("HTTP MCP endpoint", () => {
-  it("uses a PlayMCP-friendly HTTP path and port by default", () => {
+  it("uses PlayMCP in KC's default container port and MCP path", () => {
     const config = resolveHttpServerConfig({});
 
-    expect(config.port).toBe(3000);
+    expect(config.port).toBe(8000);
     expect(config.mcpPath).toBe("/mcp");
     expect(config.healthPath).toBe("/healthz");
   });

@@ -12,9 +12,16 @@ FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV MCP_TRANSPORT=http
-ENV PORT=3000
+ENV PORT=8000
+ENV MCP_EMBEDDED_POSTGRES=1
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-15 postgresql-client-15 \
+  && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
-EXPOSE 3000
-CMD ["node", "dist/index.js"]
+COPY schema.sql ./schema.sql
+COPY scripts/start-kc.sh ./scripts/start-kc.sh
+RUN chmod +x ./scripts/start-kc.sh
+EXPOSE 8000
+CMD ["./scripts/start-kc.sh"]

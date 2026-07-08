@@ -23,9 +23,10 @@ npm run db:check
 ```env
 DATABASE_URL=
 TOKEN_ENCRYPTION_KEY=
-PORT=3000
+PORT=8000
 MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
+MCP_EMBEDDED_POSTGRES=1
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=http://localhost:53682/oauth2callback
@@ -115,7 +116,53 @@ PlayMCP in KC의 "Git 소스 빌드" 방식으로 등록할 수 있습니다.
 - Endpoint path: 발급된 Endpoint URL 뒤의 `/mcp`
 - Health check path: `/healthz`
 
-Docker 컨테이너는 기본적으로 `PORT=3000`에서 HTTP MCP endpoint를 엽니다. Kakao Cloud가 `PORT` 환경변수를 주입하면 그 값을 우선 사용합니다.
+Docker 컨테이너는 기본적으로 `PORT=8000`에서 HTTP MCP endpoint를 엽니다. PlayMCP in KC 등록 화면의 `container_port`도 `8000`으로 둡니다.
+
+공모전 제출용 Docker 이미지는 외부 DB 없이 뜰 수 있도록 컨테이너 내부에 임시 PostgreSQL을 함께 실행합니다.
+
+```env
+MCP_EMBEDDED_POSTGRES=1
+```
+
+이 모드는 컨테이너 재시작/재배포 시 DB 데이터가 유지된다는 보장이 없습니다. 실제 운영 또는 장기 유지 단계에서는 외부 PostgreSQL을 만들고 아래처럼 전환합니다.
+
+```env
+MCP_EMBEDDED_POSTGRES=0
+DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/experience_memory
+```
+
+### PlayMCP in KC 입력 예시
+
+기본 정보:
+
+- MCP 서버 이름: `experience-memory-mcp`
+- 설명: `사진과 메모를 Google Drive에 저장하고 자연어로 경험 기억을 검색하는 MCP 서버`
+- Git URL: `https://github.com/jih19984/experience-memory-mcp.git`
+- 브랜치 / ref: `main`
+- Dockerfile 경로: `Dockerfile`
+- PAT: public repo라 비움
+- container_port: `8000`
+
+환경변수:
+
+```env
+MCP_HTTP_PATH=/mcp
+HEALTH_PATH=/healthz
+MCP_EMBEDDED_POSTGRES=1
+GOOGLE_REDIRECT_URI=http://localhost:53682/oauth2callback
+GOOGLE_DRIVE_ROOT_FOLDER_ID=...
+```
+
+시크릿:
+
+```env
+TOKEN_ENCRYPTION_KEY=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REFRESH_TOKEN=...
+```
+
+단일 사용자 제출 테스트는 위 값만으로 동작합니다. 다중 사용자 OAuth는 PlayMCP가 전달하는 사용자 식별 헤더와 OAuth callback URL 정책이 확정된 뒤 `EXPERIENCE_MEMORY_ACTOR_HEADER`와 actor별 Google 연결 저장 흐름을 붙입니다.
 
 ## MCP 설정 예시
 

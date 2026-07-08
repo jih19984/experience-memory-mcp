@@ -16,7 +16,7 @@ const DEFAULT_ACTOR_HEADERS = ["x-playmcp-user-id", "x-kakao-user-id", "x-mcp-us
 
 export function resolveHttpServerConfig(env: NodeJS.ProcessEnv = process.env): HttpServerConfig {
   return {
-    port: parsePort(env.PORT ?? env.MCP_HTTP_PORT, 3000),
+    port: parsePort(env.PORT ?? env.MCP_HTTP_PORT, 8000),
     host: env.HOST ?? "0.0.0.0",
     mcpPath: normalizePath(env.MCP_HTTP_PATH ?? "/mcp"),
     healthPath: normalizePath(env.HEALTH_PATH ?? "/healthz"),
