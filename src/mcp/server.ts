@@ -1,7 +1,9 @@
 import { McpServer, type ServerContext } from "@modelcontextprotocol/server";
+import { connectGoogleDrive, connectGoogleDriveInputSchema } from "../tools/connectGoogleDrive.js";
 import { saveExperienceMemoryInputSchema } from "../tools/saveExperienceMemory.js";
 import { searchExperienceMemoriesInputSchema } from "../tools/searchExperienceMemories.js";
 import { getConfiguredExperienceMemoryService } from "../services/configuredService.js";
+import type { ExperienceActor } from "../services/configuredService.js";
 import type { ExperienceMemoryService } from "../services/memoryService.js";
 
 function jsonResponse(output: unknown) {
@@ -18,6 +20,11 @@ function errorResponse(error: unknown) {
 
 export const experienceMemoryToolDefinitions = [
   {
+    name: "connectGoogleDrive",
+    title: "Connect Google Drive",
+    description: "Return a Google OAuth URL so the current user can connect their own Google Drive."
+  },
+  {
     name: "saveExperienceMemory",
     title: "Save Experience Memory",
     description: "Save a photo-backed memory after the calling LLM has prepared title, summary, tags, and mood."
@@ -31,6 +38,8 @@ export const experienceMemoryToolDefinitions = [
 
 export interface ExperienceMemoryServerOptions {
   getService?: (ctx: ServerContext) => Promise<ExperienceMemoryService>;
+  getActor?: (ctx: ServerContext) => ExperienceActor | undefined;
+  getGoogleOAuthRedirectUri?: () => string | undefined;
 }
 
 export function createExperienceMemoryServer(options: ExperienceMemoryServerOptions = {}): McpServer {
@@ -48,10 +57,31 @@ export function createExperienceMemoryServer(options: ExperienceMemoryServerOpti
   );
 
   server.registerTool(
-    "saveExperienceMemory",
+    "connectGoogleDrive",
     {
       title: experienceMemoryToolDefinitions[0].title,
       description: experienceMemoryToolDefinitions[0].description,
+      inputSchema: connectGoogleDriveInputSchema
+    },
+    async (input, ctx) => {
+      try {
+        return jsonResponse(
+          await connectGoogleDrive(input, {
+            actor: options.getActor?.(ctx),
+            redirectUri: options.getGoogleOAuthRedirectUri?.()
+          })
+        );
+      } catch (error) {
+        return errorResponse(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "saveExperienceMemory",
+    {
+      title: experienceMemoryToolDefinitions[1].title,
+      description: experienceMemoryToolDefinitions[1].description,
       inputSchema: saveExperienceMemoryInputSchema
     },
     async (input, ctx) => {
@@ -66,8 +96,8 @@ export function createExperienceMemoryServer(options: ExperienceMemoryServerOpti
   server.registerTool(
     "searchExperienceMemories",
     {
-      title: experienceMemoryToolDefinitions[1].title,
-      description: experienceMemoryToolDefinitions[1].description,
+      title: experienceMemoryToolDefinitions[2].title,
+      description: experienceMemoryToolDefinitions[2].description,
       inputSchema: searchExperienceMemoriesInputSchema
     },
     async (input, ctx) => {

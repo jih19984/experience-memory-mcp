@@ -6,6 +6,7 @@
 
 ## Tools
 
+- `connectGoogleDrive`: 현재 사용자의 Google Drive 연결 URL 생성
 - `saveExperienceMemory`: 사진과 사용자 메모 저장
 - `searchExperienceMemories`: 자연어로 경험 검색
 
@@ -26,15 +27,15 @@ TOKEN_ENCRYPTION_KEY=
 PORT=8000
 MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
+GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
 MCP_EMBEDDED_POSTGRES=1
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=http://localhost:53682/oauth2callback
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_DRIVE_ROOT_FOLDER_ID=
 ```
 
-Google Drive 연동은 단일 사용자 `.env` 방식과 다중 사용자 actor 방식 둘 다 지원합니다. 단일 사용자 방식에서는 `GOOGLE_REFRESH_TOKEN`에 들어간 계정의 Drive에 저장됩니다. 다중 사용자 방식에서는 actor별 Google refresh token을 암호화해서 PostgreSQL에 저장합니다.
+Google Drive 연동은 다중 사용자 actor 방식을 기본으로 사용합니다. 각 사용자가 `connectGoogleDrive` tool이 반환하는 Google OAuth URL을 열어 로그인하면, actor별 refresh token과 Drive root folder id가 PostgreSQL에 암호화 저장됩니다.
+
+단일 사용자 `.env` 방식도 로컬 테스트용으로만 지원합니다. 이 경우 `GOOGLE_REFRESH_TOKEN`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`에 들어간 계정의 Drive에 저장되므로 public/multi-user 배포에는 사용하지 않습니다.
 
 Google Drive 또는 PostgreSQL 설정이 없으면 MCP는 local storage로 대체 저장하지 않고 명확한 설정 오류를 반환합니다.
 
@@ -69,7 +70,7 @@ actor별 Google Drive 연결을 저장하려면 `.env`에 `DATABASE_URL`, `TOKEN
 npm run google:auth -- --actor-provider kakao --actor-id kakao-user-id
 ```
 
-연결이 완료되면 refresh token과 Drive root folder id가 PostgreSQL에 암호화 저장됩니다. MCP를 해당 actor로 실행할 때는 아래 환경변수를 지정합니다.
+연결이 완료되면 refresh token과 Drive root folder id가 PostgreSQL에 암호화 저장됩니다. MCP를 stdio로 해당 actor에 고정 실행할 때는 아래 환경변수를 지정합니다.
 
 ```env
 EXPERIENCE_MEMORY_ACTOR_PROVIDER=kakao
@@ -148,9 +149,8 @@ DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/experience_memory
 ```env
 MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
+GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
 MCP_EMBEDDED_POSTGRES=1
-GOOGLE_REDIRECT_URI=http://localhost:53682/oauth2callback
-GOOGLE_DRIVE_ROOT_FOLDER_ID=...
 ```
 
 시크릿:
@@ -159,10 +159,17 @@ GOOGLE_DRIVE_ROOT_FOLDER_ID=...
 TOKEN_ENCRYPTION_KEY=...
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
-GOOGLE_REFRESH_TOKEN=...
 ```
 
-단일 사용자 제출 테스트는 위 값만으로 동작합니다. 다중 사용자 OAuth는 PlayMCP가 전달하는 사용자 식별 헤더와 OAuth callback URL 정책이 확정된 뒤 `EXPERIENCE_MEMORY_ACTOR_HEADER`와 actor별 Google 연결 저장 흐름을 붙입니다.
+중요: `GOOGLE_REFRESH_TOKEN`과 `GOOGLE_DRIVE_ROOT_FOLDER_ID`는 PlayMCP in KC 등록 화면에 넣지 않습니다. 이 값들은 각 사용자가 Google OAuth를 완료한 뒤 서버 DB에 사용자별로 저장됩니다.
+
+Endpoint URL이 발급되면 Google Cloud Console의 OAuth Client에 아래 Authorized redirect URI를 추가합니다.
+
+```text
+https://<발급받은-endpoint-host>/oauth/google/callback
+```
+
+그 뒤 사용자가 처음 저장하려 할 때 `connectGoogleDrive` tool을 호출해 개인 Google Drive를 연결합니다.
 
 ## MCP 설정 예시
 
