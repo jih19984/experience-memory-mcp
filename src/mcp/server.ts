@@ -26,8 +26,8 @@ function errorResponse(error: unknown) {
 export const experienceMemoryToolDefinitions = [
   {
     name: "connectGoogleDrive",
-    title: "Connect Google Drive",
-    description: "Return a Google OAuth URL so the current user can connect their own Google Drive.",
+    title: "Google Drive 연결",
+    description: "현재 사용자의 Google Drive를 연결할 수 있는 인증 URL을 생성합니다.",
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -37,8 +37,8 @@ export const experienceMemoryToolDefinitions = [
   },
   {
     name: "saveExperienceMemory",
-    title: "Save Experience Memory",
-    description: "Save a photo, a text note, or both after the calling LLM has prepared title, summary, tags, and mood.",
+    title: "경험 기억 저장",
+    description: "사진, 메모, 또는 사진과 메모를 하나의 경험 기억으로 저장합니다. 호출한 LLM이 정리한 제목, 요약, 태그, 감정을 함께 저장합니다.",
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -48,8 +48,8 @@ export const experienceMemoryToolDefinitions = [
   },
   {
     name: "searchExperienceMemories",
-    title: "Search Experience Memories",
-    description: "Search saved experience memories with natural language, date, tag, and mood filters.",
+    title: "경험 기억 검색",
+    description: "저장된 경험 기억을 자연어, 날짜, 태그, 감정 조건으로 검색합니다.",
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -59,8 +59,8 @@ export const experienceMemoryToolDefinitions = [
   },
   {
     name: "updateExperienceMemory",
-    title: "Update Experience Memory",
-    description: "Update saved memory metadata and regenerate its Markdown note without replacing the original photo.",
+    title: "경험 기억 수정",
+    description: "저장된 경험 기억의 제목, 요약, 태그, 감정 등 메타데이터를 수정하고 Markdown 노트를 다시 생성합니다. 원본 사진은 교체하지 않습니다.",
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -70,8 +70,8 @@ export const experienceMemoryToolDefinitions = [
   },
   {
     name: "deleteExperienceMemory",
-    title: "Delete Experience Memory",
-    description: "Delete one saved memory and its associated Google Drive photo and Markdown note files.",
+    title: "경험 기억 삭제",
+    description: "저장된 경험 기억 하나와 연결된 Google Drive 사진 및 Markdown 노트 파일을 삭제합니다.",
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,
@@ -81,8 +81,8 @@ export const experienceMemoryToolDefinitions = [
   },
   {
     name: "debugRequestContext",
-    title: "Debug Request Context",
-    description: "Inspect non-secret request context fields to diagnose PlayMCP authentication forwarding.",
+    title: "요청 인증 진단",
+    description: "PlayMCP가 OAuth 인증 정보를 MCP 서버로 전달하는지 확인하기 위해 민감하지 않은 요청 정보만 점검합니다.",
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
