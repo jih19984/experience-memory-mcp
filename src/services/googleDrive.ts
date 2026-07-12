@@ -63,6 +63,25 @@ export class GoogleDriveStorage implements DriveStorage {
     });
   }
 
+  async updateMarkdownNote(input: { fileId: string; markdown: string }): Promise<DriveUploadResult> {
+    const response = await this.drive.files.update({
+      fileId: input.fileId,
+      media: {
+        mimeType: "text/markdown",
+        body: Readable.from(Buffer.from(input.markdown, "utf8"))
+      },
+      fields: "id, webViewLink"
+    });
+    const fileId = response.data.id;
+    if (!fileId) {
+      throw new Error("Google Drive update did not return a file id");
+    }
+    return {
+      fileId,
+      webViewLink: response.data.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`
+    };
+  }
+
   async exists(fileName: string, occurredAt: string): Promise<boolean> {
     const folderId = await this.ensureDatedFolder("photos", occurredAt);
     const response = await this.drive.files.list({

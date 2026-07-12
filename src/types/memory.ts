@@ -32,6 +32,18 @@ export interface DeleteExperienceMemoryInput {
   id: string;
 }
 
+export interface UpdateExperienceMemoryInput {
+  id: string;
+  title?: string;
+  summary?: string;
+  userNote?: string | null;
+  tags?: string[];
+  mood?: string[];
+  activityHint?: string | null;
+  occurredAt?: string;
+  locationHint?: string | null;
+}
+
 export interface ExperienceAnalysis {
   title: string;
   summary: string;
@@ -89,4 +101,15 @@ export interface SearchMemoryResult {
   driveUrl: string;
   hasImage: boolean;
   score: number;
+}
+
+export interface UpdateExperienceMemoryOutput {
+  updated: boolean;
+  memoryId?: string;
+  title?: string;
+  summary?: string;
+  tags?: string[];
+  mood?: string[];
+  driveUrl?: string;
+  hasImage?: boolean;
 }

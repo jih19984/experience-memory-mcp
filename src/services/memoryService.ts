@@ -6,7 +6,9 @@ import type {
   SaveExperienceMemoryOutput,
   SearchExperienceMemoriesInput,
   SearchMemoryResult,
-  SummarizeExperienceMemoriesInput
+  SummarizeExperienceMemoriesInput,
+  UpdateExperienceMemoryInput,
+  UpdateExperienceMemoryOutput
 } from "../types/memory.js";
 import type { DriveStorage, MemoryRepository } from "../types/ports.js";
 import { normalizeOccurredAt } from "../utils/date.js";
@@ -148,6 +150,114 @@ export class ExperienceMemoryService {
     return { summary, highlights };
   }
 
+  async updateExperienceMemory(input: UpdateExperienceMemoryInput): Promise<UpdateExperienceMemoryOutput> {
+    const row = await this.dependencies.repo.getById(input.id);
+    if (!row) {
+      return { updated: false };
+    }
+    if (!hasUpdateFields(input)) {
+      throw new Error("At least one field to update is required");
+    }
+
+    const occurredAt = input.occurredAt === undefined ? row.occurredAt : normalizeOccurredAt(input.occurredAt);
+    const title = input.title === undefined ? row.title : requireTrimmed(input.title, "title");
+    const summary = input.summary === undefined ? row.summary : requireTrimmed(input.summary, "summary");
+    const userNote = input.userNote === undefined ? row.userNote : input.userNote?.trim() ?? "";
+    const tags = input.tags === undefined ? row.tags : sanitizeRequiredList(input.tags, "tags");
+    const mood = input.mood === undefined ? row.mood : sanitizeList(input.mood);
+    const activity = input.activityHint === undefined ? row.activity : input.activityHint?.trim() || null;
+    const location = input.locationHint === undefined ? row.location : input.locationHint?.trim() || null;
+    const analysis: ExperienceAnalysis = {
+      title,
+      summary,
+      activity,
+      location,
+      tags,
+      mood,
+      filename: title,
+      confidence: {
+        activity: activity ? 1 : 0,
+        location: location ? 1 : 0,
+        mood: mood.length ? 1 : 0
+      }
+    };
+    if (
+      title === row.title &&
+      summary === row.summary &&
+      userNote === row.userNote &&
+      activity === (row.activity ?? null) &&
+      location === (row.location ?? null) &&
+      occurredAt === row.occurredAt &&
+      arraysEqual(tags, row.tags) &&
+      arraysEqual(mood, row.mood) &&
+      row.driveNoteFileId
+    ) {
+      return {
+        updated: true,
+        memoryId: row.id,
+        title: row.title,
+        summary: row.summary,
+        tags: row.tags,
+        mood: row.mood,
+        driveUrl: row.driveUrl,
+        hasImage: Boolean(row.driveFileId)
+      };
+    }
+    const markdown = buildMemoryMarkdown({
+      analysis,
+      request: {
+        title,
+        summary,
+        userNote,
+        tags,
+        mood,
+        activityHint: activity ?? undefined,
+        occurredAt,
+        locationHint: location ?? undefined
+      },
+      occurredAt,
+      photoUrl: row.driveFileId ? row.driveUrl : undefined
+    });
+    const note = row.driveNoteFileId
+      ? await this.dependencies.drive.updateMarkdownNote({ fileId: row.driveNoteFileId, markdown })
+      : await this.dependencies.drive.uploadMarkdownNote({
+          fileName: `${buildMemoryBaseName(occurredAt, title)}.md`,
+          markdown,
+          occurredAt
+        });
+
+    const updated = await this.dependencies.repo.update({
+      ...row,
+      title,
+      summary,
+      userNote,
+      activity,
+      location,
+      occurredAt,
+      tags,
+      mood,
+      driveNoteFileId: note.fileId,
+      driveUrl: row.driveFileId ? row.driveUrl : note.webViewLink,
+      markdownUrl: note.webViewLink,
+      rawAnalysis: analysis,
+      updatedAt: new Date().toISOString()
+    });
+    if (!updated) {
+      return { updated: false };
+    }
+
+    return {
+      updated: true,
+      memoryId: updated.id,
+      title: updated.title,
+      summary: updated.summary,
+      tags: updated.tags,
+      mood: updated.mood,
+      driveUrl: updated.driveUrl,
+      hasImage: Boolean(updated.driveFileId)
+    };
+  }
+
   async deleteExperienceMemory(input: DeleteExperienceMemoryInput) {
     const row = await this.dependencies.repo.getById(input.id);
     if (!row) {
@@ -182,4 +292,41 @@ function toExperienceAnalysis(input: SaveExperienceMemoryInput): ExperienceAnaly
       mood: input.mood?.length ? 1 : 0
     }
   };
+}
+
+function hasUpdateFields(input: UpdateExperienceMemoryInput): boolean {
+  return [
+    input.title,
+    input.summary,
+    input.userNote,
+    input.tags,
+    input.mood,
+    input.activityHint,
+    input.occurredAt,
+    input.locationHint
+  ].some((value) => value !== undefined);
+}
+
+function requireTrimmed(value: string, fieldName: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${fieldName} is required`);
+  }
+  return trimmed;
+}
+
+function sanitizeList(values: string[]): string[] {
+  return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function sanitizeRequiredList(values: string[], fieldName: string): string[] {
+  const sanitized = sanitizeList(values);
+  if (!sanitized.length) {
+    throw new Error(`${fieldName} are required`);
+  }
+  return sanitized;
+}
+
+function arraysEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }

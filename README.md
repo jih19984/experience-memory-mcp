@@ -9,6 +9,8 @@
 - `connectGoogleDrive`: 수동 Google Drive 연결 URL 생성. PlayMCP OAuth 방식에서는 보통 사용하지 않습니다.
 - `saveExperienceMemory`: 사진, 메모, 또는 사진+메모 경험 저장
 - `searchExperienceMemories`: 자연어로 경험 검색
+- `updateExperienceMemory`: 저장된 경험의 제목, 요약, 메모, 태그, 감정, 날짜, 활동, 장소 수정
+- `deleteExperienceMemory`: 저장된 경험과 연결된 Google Drive 사진/Markdown 메모 삭제
 
 ## Setup
 
@@ -237,9 +239,30 @@ stdio transport를 사용하는 MCP host에서는 아래처럼 설정합니다.
 }
 ```
 
+수정 예시:
+
+```json
+{
+  "id": "5b37c7bc-d845-40b0-ae66-95ed1d327732",
+  "title": "엄마와 함께 먹은 치킨",
+  "summary": "오늘 엄마와 함께 바삭한 치킨을 먹으며 남긴 식사 기억.",
+  "tags": ["엄마", "치킨", "식사", "가족"],
+  "mood": ["따뜻함", "만족"]
+}
+```
+
+삭제 예시:
+
+```json
+{
+  "id": "5b37c7bc-d845-40b0-ae66-95ed1d327732"
+}
+```
+
 ## Notes
 
 - 클라우드 환경에서는 `imagePath`보다 `imageUrl` 또는 `imageBase64` 입력이 안전합니다.
 - 사진 없이 `userNote`만으로도 저장할 수 있습니다.
 - 사진 원본을 Drive에 저장하려면 MCP 서버가 실제 이미지 bytes에 접근할 수 있어야 합니다.
 - DB 저장 실패 시 업로드된 Drive 파일 삭제를 시도합니다.
+- `updateExperienceMemory`는 사진 교체를 하지 않습니다. 사진 교체가 필요하면 새 경험 저장 또는 별도 사진 교체 tool 추가를 권장합니다.

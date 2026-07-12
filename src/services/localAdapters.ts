@@ -22,6 +22,15 @@ export class LocalDriveStorage implements DriveStorage {
     return localUploadResult(filePath);
   }
 
+  async updateMarkdownNote(input: { fileId: string; markdown: string }): Promise<DriveUploadResult> {
+    if (!input.fileId.startsWith("local:")) {
+      throw new Error("LocalDriveStorage can only update local file ids");
+    }
+    const filePath = input.fileId.slice("local:".length);
+    await writeFile(filePath, input.markdown, "utf8");
+    return localUploadResult(filePath);
+  }
+
   async exists(fileName: string, occurredAt: string): Promise<boolean> {
     const filePath = this.datedPath("photos", occurredAt, fileName);
     try {
@@ -93,6 +102,17 @@ export class LocalMemoryRepository implements MemoryRepository {
   async getById(id: string): Promise<ExperienceMemoryRecord | undefined> {
     const rows = await this.readRows();
     return rows.find((row) => row.id === id);
+  }
+
+  async update(record: ExperienceMemoryRecord): Promise<ExperienceMemoryRecord | undefined> {
+    const rows = await this.readRows();
+    const index = rows.findIndex((row) => row.id === record.id);
+    if (index === -1) {
+      return undefined;
+    }
+    rows[index] = record;
+    await this.writeRows(rows);
+    return record;
   }
 
   async delete(id: string): Promise<boolean> {

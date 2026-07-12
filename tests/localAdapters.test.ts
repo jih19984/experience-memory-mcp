@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -51,6 +51,33 @@ describe("local demo adapters", () => {
       expect(note.webViewLink).toContain("file://");
       expect(row.id).toBe("memory-1");
       expect(search[0].score).toBeGreaterThan(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("updates local markdown notes and memory rows", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "experience-memory-test-"));
+    try {
+      const drive = new LocalDriveStorage(root);
+      const repo = new LocalMemoryRepository(path.join(root, "memories.json"));
+      const note = await drive.uploadMarkdownNote({
+        fileName: "2026-07-08_치킨.md",
+        markdown: "# 치킨",
+        occurredAt: "2026-07-08T00:00:00.000Z"
+      });
+      const row = await repo.insert({
+        ...memoryRecord("memory-1", "치킨", "치킨"),
+        driveNoteFileId: note.fileId,
+        driveUrl: note.webViewLink,
+        markdownUrl: note.webViewLink
+      });
+
+      await drive.updateMarkdownNote({ fileId: row.driveNoteFileId as string, markdown: "# 엄마와 먹은 치킨" });
+      const updated = await repo.update({ ...row, title: "엄마와 먹은 치킨" });
+
+      expect(updated?.title).toBe("엄마와 먹은 치킨");
+      expect(await readFile(note.fileId.slice("local:".length), "utf8")).toBe("# 엄마와 먹은 치킨");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

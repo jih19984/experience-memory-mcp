@@ -145,12 +145,70 @@ export class PostgresMemoryRepository implements MemoryRepository {
   }
 
   async getById(id: string): Promise<ExperienceMemoryRecord | undefined> {
-    const result = await this.pool.query("SELECT * FROM experience_memories WHERE id = $1", [id]);
+    const values: unknown[] = [id];
+    const filters = ["id = $1"];
+    if (this.userId) {
+      values.push(this.userId);
+      filters.push(`user_id = $${values.length}`);
+    }
+    const result = await this.pool.query(`SELECT * FROM experience_memories WHERE ${filters.join(" AND ")}`, values);
+    return result.rows[0] ? mapRow(result.rows[0]) : undefined;
+  }
+
+  async update(record: ExperienceMemoryRecord): Promise<ExperienceMemoryRecord | undefined> {
+    const values: unknown[] = [
+      record.id,
+      record.title,
+      record.summary,
+      record.userNote,
+      record.activity,
+      record.location,
+      record.occurredAt,
+      record.tags,
+      record.mood,
+      record.driveFileId,
+      record.driveNoteFileId,
+      record.driveUrl,
+      record.markdownUrl,
+      record.rawAnalysis,
+      record.updatedAt
+    ];
+    const filters = ["id = $1"];
+    if (this.userId) {
+      values.push(this.userId);
+      filters.push(`user_id = $${values.length}`);
+    }
+    const result = await this.pool.query(
+      `UPDATE experience_memories
+       SET title = $2,
+           summary = $3,
+           user_note = $4,
+           activity = $5,
+           location = $6,
+           occurred_at = $7,
+           tags = $8,
+           mood = $9,
+           drive_file_id = $10,
+           drive_note_file_id = $11,
+           drive_url = $12,
+           markdown_url = $13,
+           raw_analysis = $14,
+           updated_at = $15
+       WHERE ${filters.join(" AND ")}
+       RETURNING *`,
+      values
+    );
     return result.rows[0] ? mapRow(result.rows[0]) : undefined;
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = await this.pool.query("DELETE FROM experience_memories WHERE id = $1", [id]);
+    const values: unknown[] = [id];
+    const filters = ["id = $1"];
+    if (this.userId) {
+      values.push(this.userId);
+      filters.push(`user_id = $${values.length}`);
+    }
+    const result = await this.pool.query(`DELETE FROM experience_memories WHERE ${filters.join(" AND ")}`, values);
     return (result.rowCount ?? 0) > 0;
   }
 }

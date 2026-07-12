@@ -6,6 +6,7 @@ import type { ExperienceMemoryRecord } from "../src/types/memory.js";
 class FakeDrive implements DriveStorage {
   uploads: Array<{ kind: "photo" | "note"; fileName: string }> = [];
   deleted: string[] = [];
+  notes = new Map<string, string>();
 
   async uploadPhoto(input: { fileName: string }) {
     this.uploads.push({ kind: "photo", fileName: input.fileName });
@@ -15,11 +16,20 @@ class FakeDrive implements DriveStorage {
     };
   }
 
-  async uploadMarkdownNote(input: { fileName: string }) {
+  async uploadMarkdownNote(input: { fileName: string; markdown: string }) {
     this.uploads.push({ kind: "note", fileName: input.fileName });
+    this.notes.set("note-file-id", input.markdown);
     return {
       fileId: "note-file-id",
       webViewLink: `https://drive.example/${input.fileName}`
+    };
+  }
+
+  async updateMarkdownNote(input: { fileId: string; markdown: string }) {
+    this.notes.set(input.fileId, input.markdown);
+    return {
+      fileId: input.fileId,
+      webViewLink: `https://drive.example/${input.fileId}.md`
     };
   }
 
@@ -61,6 +71,15 @@ class FakeRepo implements MemoryRepository {
 
   async getById(id: string) {
     return this.rows.find((row) => row.id === id);
+  }
+
+  async update(record: ExperienceMemoryRecord) {
+    const index = this.rows.findIndex((row) => row.id === record.id);
+    if (index === -1) {
+      return undefined;
+    }
+    this.rows[index] = record;
+    return record;
   }
 
   async delete(id: string) {
@@ -185,5 +204,76 @@ describe("ExperienceMemoryService", () => {
     expect(result.deleted).toBe(true);
     expect(repo.rows).toHaveLength(0);
     expect(drive.deleted).toEqual(["photo-file-id", "note-file-id"]);
+  });
+
+  it("updates memory metadata and refreshes the markdown note", async () => {
+    const drive = new FakeDrive();
+    const repo = new FakeRepo();
+    const service = new ExperienceMemoryService({ drive, repo });
+    const saved = await service.saveExperienceMemory({
+      userNote: "엄마랑 치킨을 먹었다.",
+      title: "치킨",
+      summary: "치킨을 먹은 기억.",
+      tags: ["치킨"],
+      mood: ["만족"]
+    });
+
+    const result = await service.updateExperienceMemory({
+      id: saved.memoryId,
+      title: "엄마와 먹은 치킨",
+      summary: "엄마와 함께 바삭한 치킨을 먹은 기억.",
+      tags: ["엄마", "치킨", "가족"],
+      mood: ["따뜻함", "만족"],
+      locationHint: "집"
+    });
+
+    expect(result.updated).toBe(true);
+    expect(result.title).toBe("엄마와 먹은 치킨");
+    expect(repo.rows[0].title).toBe("엄마와 먹은 치킨");
+    expect(repo.rows[0].location).toBe("집");
+    expect(repo.rows[0].tags).toEqual(["엄마", "치킨", "가족"]);
+    expect(drive.notes.get("note-file-id")).toContain("# 엄마와 먹은 치킨");
+    expect(drive.notes.get("note-file-id")).toContain("- 장소: 집");
+  });
+
+  it("keeps repeated updates idempotent when values are unchanged", async () => {
+    const drive = new FakeDrive();
+    const repo = new FakeRepo();
+    const service = new ExperienceMemoryService({ drive, repo });
+    const saved = await service.saveExperienceMemory({
+      userNote: "엄마랑 치킨을 먹었다.",
+      title: "엄마와 먹은 치킨",
+      summary: "엄마와 함께 치킨을 먹은 기억.",
+      tags: ["엄마", "치킨"],
+      mood: ["만족"]
+    });
+    const originalUpdatedAt = repo.rows[0].updatedAt;
+    drive.notes.clear();
+
+    const result = await service.updateExperienceMemory({
+      id: saved.memoryId,
+      title: "엄마와 먹은 치킨",
+      summary: "엄마와 함께 치킨을 먹은 기억.",
+      tags: ["엄마", "치킨"],
+      mood: ["만족"]
+    });
+
+    expect(result.updated).toBe(true);
+    expect(repo.rows[0].updatedAt).toBe(originalUpdatedAt);
+    expect(drive.notes.size).toBe(0);
+  });
+
+  it("requires at least one field for updates", async () => {
+    const repo = new FakeRepo();
+    const service = new ExperienceMemoryService({ drive: new FakeDrive(), repo });
+    const saved = await service.saveExperienceMemory({
+      userNote: "수정할 기억",
+      title: "수정할 기억",
+      summary: "수정할 기억.",
+      tags: ["수정"],
+      mood: ["평온"]
+    });
+
+    await expect(service.updateExperienceMemory({ id: saved.memoryId })).rejects.toThrow(/At least one field/);
   });
 });
