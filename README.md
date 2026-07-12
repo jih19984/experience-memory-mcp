@@ -6,7 +6,7 @@
 
 ## Tools
 
-- `connectGoogleDrive`: 현재 사용자의 Google Drive 연결 URL 생성
+- `connectGoogleDrive`: 수동 Google Drive 연결 URL 생성. PlayMCP OAuth 방식에서는 보통 사용하지 않습니다.
 - `saveExperienceMemory`: 사진과 사용자 메모 저장
 - `searchExperienceMemories`: 자연어로 경험 검색
 
@@ -26,12 +26,26 @@ MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
 GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
 EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
-EXPERIENCE_MEMORY_DEFAULT_ACTOR_ID=playmcp-demo
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 ```
 
-Google Drive 연동은 다중 사용자 actor 방식을 기본으로 사용합니다. 각 사용자가 `connectGoogleDrive` tool이 반환하는 Google OAuth URL을 열어 로그인하면, actor별 refresh token과 Drive root folder id가 암호화 저장됩니다.
+PlayMCP 제출용 권장 방식은 PlayMCP 등록 화면의 OAuth 인증을 Google OAuth로 설정하는 것입니다. 그러면 PlayMCP가 tool call에 `Authorization: Bearer ...` access token을 전달하고, MCP 서버는 그 token으로 Google 사용자 id를 확인해 사용자별 저장소와 Google Drive 폴더를 선택합니다.
+
+PlayMCP OAuth 입력값:
+
+```text
+Client ID: GOOGLE_CLIENT_ID 값
+Client Secret: GOOGLE_CLIENT_SECRET 값
+Authorization Endpoint URL: https://accounts.google.com/o/oauth2/v2/auth
+Token Endpoint URL: https://oauth2.googleapis.com/token
+Scope: openid email profile https://www.googleapis.com/auth/drive.file
+Grant Type: AUTHORIZATION_CODE
+```
+
+PlayMCP가 이메일로 보내는 Redirect URI는 Google Cloud Console의 OAuth Client에 Authorized redirect URI로 추가해야 합니다.
+
+수동 Google Drive 연결도 fallback으로 지원합니다. 각 사용자가 `connectGoogleDrive` tool이 반환하는 Google OAuth URL을 열어 로그인하면, actor별 refresh token과 Drive root folder id가 암호화 저장됩니다.
 
 단일 사용자 `.env` 방식도 로컬 테스트용으로만 지원합니다. 이 경우 `GOOGLE_REFRESH_TOKEN`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`에 들어간 계정의 Drive에 저장되므로 public/multi-user 배포에는 사용하지 않습니다.
 
@@ -75,7 +89,7 @@ EXPERIENCE_MEMORY_ACTOR_PROVIDER=kakao
 EXPERIENCE_MEMORY_ACTOR_ID=kakao-user-id
 ```
 
-PlayMCP 같은 HTTP MCP host에서 사용자 식별값을 헤더로 전달하면 MCP 서버가 actor별 Drive 연결을 선택합니다. 기본 후보 헤더는 `x-playmcp-user-id`, `x-kakao-user-id`, `x-mcp-user-id`, `x-user-id`, `mcp-user-id`입니다. 실제 헤더명이 다르면 아래처럼 지정합니다.
+PlayMCP 같은 HTTP MCP host에서 사용자 식별값을 헤더로 전달하면 MCP 서버가 actor별 Drive 연결을 선택합니다. 기본 후보 헤더는 `x-playmcp-user-id`, `x-kakao-user-id`, `x-mcp-user-id`, `x-user-id`, `mcp-user-id`입니다. 실제 헤더명이 다르면 아래처럼 지정합니다. 단, PlayMCP OAuth의 Bearer token이 전달되면 Google OAuth 사용자 id를 우선 사용합니다.
 
 ```env
 EXPERIENCE_MEMORY_ACTOR_PROVIDER=kakao
@@ -151,7 +165,6 @@ MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
 GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
 EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
-EXPERIENCE_MEMORY_DEFAULT_ACTOR_ID=playmcp-demo
 ```
 
 시크릿:
@@ -162,9 +175,9 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 ```
 
-중요: `GOOGLE_REFRESH_TOKEN`과 `GOOGLE_DRIVE_ROOT_FOLDER_ID`는 PlayMCP in KC 등록 화면에 넣지 않습니다. 이 값들은 각 사용자가 Google OAuth를 완료한 뒤 사용자별로 저장됩니다.
+중요: `GOOGLE_REFRESH_TOKEN`과 `GOOGLE_DRIVE_ROOT_FOLDER_ID`는 PlayMCP in KC 등록 화면에 넣지 않습니다. PlayMCP OAuth 방식에서는 사용자의 access token으로 Drive에 접근하고, root folder는 사용자 Drive 안에 자동 생성/재사용합니다.
 
-Endpoint URL이 발급되면 Google Cloud Console의 OAuth Client에 아래 Authorized redirect URI를 추가합니다.
+Endpoint URL이 발급되면 Google Cloud Console의 OAuth Client에 아래 Authorized redirect URI도 추가할 수 있습니다. 이 URI는 수동 `connectGoogleDrive` fallback용입니다. PlayMCP OAuth 자체에는 PlayMCP가 이메일로 보내는 Redirect URI를 추가해야 합니다.
 
 ```text
 https://<발급받은-endpoint-host>/oauth/google/callback

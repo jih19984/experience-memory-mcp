@@ -10,7 +10,7 @@ import { yearMonthPath } from "../utils/date.js";
 import { searchTerms } from "../utils/searchTerms.js";
 
 export class LocalDriveStorage implements DriveStorage {
-  constructor(private readonly root = process.env.EXPERIENCE_MEMORY_LOCAL_DIR ?? ".experience-memory") {}
+  constructor(private readonly root = localDataDir()) {}
 
   async uploadPhoto(input: { fileName: string; mimeType: string; buffer: Buffer; occurredAt: string }): Promise<DriveUploadResult> {
     const filePath = await this.writeDatedFile("photos", input.occurredAt, input.fileName, input.buffer);
@@ -52,7 +52,11 @@ export class LocalDriveStorage implements DriveStorage {
 }
 
 export class LocalMemoryRepository implements MemoryRepository {
-  constructor(private readonly filePath = path.join(process.env.EXPERIENCE_MEMORY_LOCAL_DIR ?? ".experience-memory", "memories.json")) {}
+  constructor(filePath?: string, userId?: string) {
+    this.filePath = filePath ?? defaultMemoryFilePath(userId);
+  }
+
+  private readonly filePath: string;
 
   async insert(record: ExperienceMemoryRecord): Promise<ExperienceMemoryRecord> {
     const rows = await this.readRows();
@@ -110,6 +114,21 @@ export class LocalMemoryRepository implements MemoryRepository {
     await mkdir(path.dirname(this.filePath), { recursive: true });
     await writeFile(this.filePath, JSON.stringify(rows, null, 2), "utf8");
   }
+}
+
+function defaultMemoryFilePath(userId?: string): string {
+  if (!userId) {
+    return path.join(localDataDir(), "memories.json");
+  }
+  return path.join(localDataDir(), "users", safePathSegment(userId), "memories.json");
+}
+
+function localDataDir(): string {
+  return process.env.EXPERIENCE_MEMORY_DATA_DIR ?? process.env.EXPERIENCE_MEMORY_LOCAL_DIR ?? ".experience-memory";
+}
+
+function safePathSegment(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120) || "user";
 }
 
 function localUploadResult(filePath: string): DriveUploadResult {

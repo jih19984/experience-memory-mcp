@@ -4,6 +4,11 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const GOOGLE_DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 export const DEFAULT_GOOGLE_REDIRECT_URI = "http://localhost:53682/oauth2callback";
 
+export interface GoogleOAuthUser {
+  id: string;
+  email?: string;
+}
+
 export interface GoogleOAuthConfig {
   clientId: string;
   clientSecret: string;
@@ -58,6 +63,21 @@ export async function createExperienceMemoryRootFolder(config: GoogleOAuthConfig
   return {
     folderId: response.data.id,
     webViewLink: response.data.webViewLink
+  };
+}
+
+export async function getGoogleOAuthUser(accessToken: string): Promise<GoogleOAuthUser> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+  const oauth2 = google.oauth2({ version: "v2", auth });
+  const response = await oauth2.userinfo.get();
+  const id = response.data.id;
+  if (!id) {
+    throw new Error("Google OAuth userinfo did not return a user id");
+  }
+  return {
+    id,
+    email: response.data.email ?? undefined
   };
 }
 

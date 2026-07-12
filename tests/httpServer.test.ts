@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createHealthResponse,
   extractActorFromRequest,
+  extractBearerTokenFromRequest,
   resolveHttpServerConfig,
   shouldHandleMcpRequest
 } from "../src/http/server.js";
@@ -63,5 +64,13 @@ describe("HTTP MCP endpoint", () => {
       provider: "kakao",
       providerUserId: "playmcp-demo"
     });
+  });
+
+  it("extracts an OAuth bearer token from the HTTP Authorization header", () => {
+    const request = new Request("http://localhost:3000/mcp", {
+      headers: { authorization: "Bearer google-access-token" }
+    });
+
+    expect(extractBearerTokenFromRequest(request)).toBe("google-access-token");
   });
 });

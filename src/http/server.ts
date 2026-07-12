@@ -73,14 +73,24 @@ export function extractActorFromRequest(
   return undefined;
 }
 
+export function extractBearerTokenFromRequest(request: Request): string | undefined {
+  const authorization = request.headers.get("authorization")?.trim();
+  if (!authorization) {
+    return undefined;
+  }
+  const match = /^Bearer\s+(.+)$/i.exec(authorization);
+  return match?.[1]?.trim() || undefined;
+}
+
 export async function startHttpServer(config: HttpServerConfig = resolveHttpServerConfig()): Promise<void> {
   const mcpHandler = createMcpHandler((ctx) => {
     const actor = ctx.requestInfo ? extractActorFromRequest(ctx.requestInfo, config) : undefined;
+    const googleAccessToken = ctx.requestInfo ? extractBearerTokenFromRequest(ctx.requestInfo) : undefined;
     const googleOAuthRedirectUri = ctx.requestInfo ? buildGoogleOAuthRedirectUri(ctx.requestInfo, config) : undefined;
     return createExperienceMemoryServer({
       getActor: () => actor,
       getGoogleOAuthRedirectUri: () => googleOAuthRedirectUri,
-      getService: () => getConfiguredExperienceMemoryService({ actor })
+      getService: () => getConfiguredExperienceMemoryService({ actor, googleAccessToken })
     });
   });
 

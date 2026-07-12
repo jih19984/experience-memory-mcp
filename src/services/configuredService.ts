@@ -3,6 +3,7 @@ import { GoogleDriveStorage } from "./googleDrive.js";
 import { LocalGoogleConnectionRepository, PostgresGoogleConnectionRepository } from "./googleConnections.js";
 import { PostgresMemoryRepository } from "./database.js";
 import { LocalMemoryRepository } from "./localAdapters.js";
+import { getGoogleOAuthUser } from "./googleOAuth.js";
 
 export interface ExperienceActor {
   provider: string;
@@ -11,6 +12,7 @@ export interface ExperienceActor {
 
 export interface ConfiguredServiceOptions {
   actor?: ExperienceActor;
+  googleAccessToken?: string;
 }
 
 export function resolveConfiguredActor(input: {
@@ -31,6 +33,18 @@ export function resolveConfiguredActor(input: {
 export async function getConfiguredExperienceMemoryService(
   options: ConfiguredServiceOptions = {}
 ): Promise<ExperienceMemoryService> {
+  if (options.googleAccessToken) {
+    const googleUser = await getGoogleOAuthUser(options.googleAccessToken);
+    const userId = `google:${googleUser.id}`;
+    return new ExperienceMemoryService({
+      drive: new GoogleDriveStorage({
+        accessToken: options.googleAccessToken,
+        rootFolderName: process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME
+      }),
+      repo: createMemoryRepository(userId)
+    });
+  }
+
   const actor =
     options.actor ??
     resolveConfiguredActor({
@@ -66,5 +80,5 @@ export function createGoogleConnectionRepository() {
 }
 
 function createMemoryRepository(userId?: string) {
-  return process.env.DATABASE_URL ? new PostgresMemoryRepository(undefined, userId) : new LocalMemoryRepository();
+  return process.env.DATABASE_URL ? new PostgresMemoryRepository(undefined, userId) : new LocalMemoryRepository(undefined, userId);
 }

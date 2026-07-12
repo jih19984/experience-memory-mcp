@@ -6,32 +6,41 @@ import { yearMonthPath } from "../utils/date.js";
 export interface GoogleDriveConfig {
   clientId?: string;
   clientSecret?: string;
+  accessToken?: string;
   refreshToken?: string;
   rootFolderId?: string;
+  rootFolderName?: string;
 }
 
 export class GoogleDriveStorage implements DriveStorage {
   private readonly drive: drive_v3.Drive;
   private readonly folderCache = new Map<string, string>();
+  private rootFolderId?: string;
 
   constructor(
     private readonly config: GoogleDriveConfig = {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      accessToken: process.env.GOOGLE_ACCESS_TOKEN,
       refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-      rootFolderId: process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
+      rootFolderId: process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID,
+      rootFolderName: process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME
     }
   ) {
-    const missing = Object.entries(config)
-      .filter(([, value]) => !value)
-      .map(([key]) => key);
-    if (missing.length > 0) {
-      throw new Error(`Missing Google Drive configuration: ${missing.join(", ")}`);
+    if (!config.accessToken && !config.refreshToken) {
+      throw new Error("Missing Google Drive configuration: accessToken or refreshToken");
+    }
+    if (config.refreshToken && (!config.clientId || !config.clientSecret)) {
+      throw new Error("Missing Google Drive configuration: clientId, clientSecret");
     }
 
     const auth = new google.auth.OAuth2(config.clientId, config.clientSecret);
-    auth.setCredentials({ refresh_token: config.refreshToken });
+    auth.setCredentials({
+      access_token: config.accessToken,
+      refresh_token: config.refreshToken
+    });
     this.drive = google.drive({ version: "v3", auth });
+    this.rootFolderId = config.rootFolderId;
   }
 
   async uploadPhoto(input: { fileName: string; mimeType: string; buffer: Buffer; occurredAt: string }): Promise<DriveUploadResult> {
@@ -97,9 +106,43 @@ export class GoogleDriveStorage implements DriveStorage {
 
   private async ensureDatedFolder(kind: "photos" | "notes", occurredAt: string): Promise<string> {
     const { year, month } = yearMonthPath(occurredAt);
-    const kindFolder = await this.ensureFolder(kind, this.config.rootFolderId as string);
+    const rootFolderId = await this.ensureRootFolder();
+    const kindFolder = await this.ensureFolder(kind, rootFolderId);
     const yearFolder = await this.ensureFolder(year, kindFolder);
     return this.ensureFolder(month, yearFolder);
+  }
+
+  private async ensureRootFolder(): Promise<string> {
+    if (this.rootFolderId) {
+      return this.rootFolderId;
+    }
+
+    const name = this.config.rootFolderName?.trim() || "Experience Memories";
+    const found = await this.drive.files.list({
+      q: `'root' in parents and name = '${escapeDriveQuery(name)}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: "files(id)",
+      pageSize: 1
+    });
+    const existing = found.data.files?.[0]?.id;
+    if (existing) {
+      this.rootFolderId = existing;
+      return existing;
+    }
+
+    const created = await this.drive.files.create({
+      requestBody: {
+        name,
+        parents: ["root"],
+        mimeType: "application/vnd.google-apps.folder"
+      },
+      fields: "id"
+    });
+    const folderId = created.data.id;
+    if (!folderId) {
+      throw new Error("Google Drive root folder creation failed");
+    }
+    this.rootFolderId = folderId;
+    return folderId;
   }
 
   private async ensureFolder(name: string, parentId: string): Promise<string> {

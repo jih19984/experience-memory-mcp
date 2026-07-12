@@ -115,4 +115,49 @@ describe("local demo adapters", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it("keeps local memory rows separated by user id", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "experience-memory-users-"));
+    const originalDataDir = process.env.EXPERIENCE_MEMORY_DATA_DIR;
+    process.env.EXPERIENCE_MEMORY_DATA_DIR = root;
+    try {
+      const userA = new LocalMemoryRepository(undefined, "google:user-a");
+      const userB = new LocalMemoryRepository(undefined, "google:user-b");
+      await userA.insert(memoryRecord("a", "강아지 입양", "강아지"));
+      await userB.insert(memoryRecord("b", "피노키오 독서", "독서"));
+
+      expect((await userA.search({ query: "강아지", limit: 10 })).map((row) => row.id)).toEqual(["a"]);
+      expect((await userB.search({ query: "강아지", limit: 10 })).map((row) => row.id)).toEqual([]);
+    } finally {
+      if (originalDataDir === undefined) {
+        delete process.env.EXPERIENCE_MEMORY_DATA_DIR;
+      } else {
+        process.env.EXPERIENCE_MEMORY_DATA_DIR = originalDataDir;
+      }
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
+
+function memoryRecord(id: string, title: string, tag: string) {
+  return {
+    id,
+    title,
+    summary: `${title} 기억`,
+    userNote: `${title}을 저장했다.`,
+    occurredAt: "2026-07-08T00:00:00.000Z",
+    tags: [tag],
+    mood: ["기쁨"],
+    driveUrl: `file:///${id}.png`,
+    rawAnalysis: {
+      title,
+      summary: `${title} 기억`,
+      tags: [tag],
+      mood: ["기쁨"],
+      filename: title,
+      confidence: { activity: 0, location: 0, mood: 1 }
+    },
+    createdAt: "2026-07-08T00:00:00.000Z",
+    updatedAt: "2026-07-08T00:00:00.000Z"
+  };
+}
