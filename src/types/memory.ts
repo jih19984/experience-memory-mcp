@@ -2,7 +2,7 @@ export interface SaveExperienceMemoryInput {
   imagePath?: string;
   imageUrl?: string;
   imageBase64?: string;
-  userNote: string;
+  userNote?: string;
   title: string;
   summary: string;
   tags: string[];
@@ -74,16 +74,19 @@ export interface SaveExperienceMemoryOutput {
   tags: string[];
   mood: string[];
   driveUrl: string;
+  hasImage: boolean;
 }
 
 export interface SearchMemoryResult {
   id: string;
   title: string;
   summary: string;
+  userNote?: string;
   occurredAt: string;
   location?: string | null;
   tags: string[];
   mood: string[];
   driveUrl: string;
+  hasImage: boolean;
   score: number;
 }

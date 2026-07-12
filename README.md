@@ -1,13 +1,13 @@
 # Experience Memory MCP
 
-사진과 짧은 메모를 하나의 경험 기억으로 저장하고, 나중에 자연어로 다시 찾는 MCP 서버입니다.
+사진이나 짧은 메모를 하나의 경험 기억으로 저장하고, 나중에 자연어로 다시 찾는 MCP 서버입니다.
 
-이 MVP는 호출 LLM 위임형입니다. 카카오톡/ChatGPT/Claude 같은 대화 중인 LLM이 사진과 메모를 보고 제목, 요약, 태그, 감정을 정리한 뒤 MCP tool을 호출합니다. MCP 서버는 AI API를 다시 호출하지 않고, 사진 원본과 Markdown 메모를 Google Drive에 저장하고 검색용 메타데이터를 저장합니다.
+이 MVP는 호출 LLM 위임형입니다. 카카오톡/ChatGPT/Claude 같은 대화 중인 LLM이 사진이나 메모를 보고 제목, 요약, 태그, 감정을 정리한 뒤 MCP tool을 호출합니다. MCP 서버는 AI API를 다시 호출하지 않고, 사진이 있으면 원본을 Google Drive에 저장하고 항상 Markdown 메모와 검색용 메타데이터를 저장합니다.
 
 ## Tools
 
 - `connectGoogleDrive`: 수동 Google Drive 연결 URL 생성. PlayMCP OAuth 방식에서는 보통 사용하지 않습니다.
-- `saveExperienceMemory`: 사진과 사용자 메모 저장
+- `saveExperienceMemory`: 사진, 메모, 또는 사진+메모 경험 저장
 - `searchExperienceMemories`: 자연어로 경험 검색
 
 ## Setup
@@ -72,7 +72,7 @@ GOOGLE_REFRESH_TOKEN=...
 GOOGLE_DRIVE_ROOT_FOLDER_ID=...
 ```
 
-이 값을 `.env`에 추가하면 MCP가 해당 Google 계정의 Drive에 사진과 Markdown 메모를 저장합니다. 권한은 전체 Drive 접근이 아니라 앱이 만든 파일 중심의 `drive.file` scope를 사용합니다.
+이 값을 `.env`에 추가하면 MCP가 해당 Google 계정의 Drive에 사진과 Markdown 메모를 저장합니다. 텍스트만 있는 경험은 Markdown 메모만 저장합니다. 권한은 전체 Drive 접근이 아니라 앱이 만든 파일 중심의 `drive.file` scope를 사용합니다.
 
 ### 다중 사용자 연결
 
@@ -232,12 +232,14 @@ stdio transport를 사용하는 MCP host에서는 아래처럼 설정합니다.
   "summary": "힘들었지만 한강 야경 덕분에 끝까지 버틴 러닝 경험.",
   "tags": ["한강", "러닝", "야경"],
   "mood": ["힘듦", "만족", "개운함"],
-  "driveUrl": "https://drive.google.com/..."
+  "driveUrl": "https://drive.google.com/...",
+  "hasImage": true
 }
 ```
 
 ## Notes
 
 - 클라우드 환경에서는 `imagePath`보다 `imageUrl` 또는 `imageBase64` 입력이 안전합니다.
+- 사진 없이 `userNote`만으로도 저장할 수 있습니다.
 - 사진 원본을 Drive에 저장하려면 MCP 서버가 실제 이미지 bytes에 접근할 수 있어야 합니다.
 - DB 저장 실패 시 업로드된 Drive 파일 삭제를 시도합니다.

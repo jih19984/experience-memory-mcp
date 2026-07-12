@@ -27,7 +27,7 @@ export const experienceMemoryToolDefinitions = [
   {
     name: "saveExperienceMemory",
     title: "Save Experience Memory",
-    description: "Save a photo-backed memory after the calling LLM has prepared title, summary, tags, and mood."
+    description: "Save a photo, a text note, or both after the calling LLM has prepared title, summary, tags, and mood."
   },
   {
     name: "searchExperienceMemories",

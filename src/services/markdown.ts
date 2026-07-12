@@ -4,9 +4,9 @@ export function buildMemoryMarkdown(input: {
   analysis: ExperienceAnalysis;
   request: SaveExperienceMemoryInput;
   occurredAt: string;
-  driveUrl: string;
+  photoUrl?: string;
 }): string {
-  const { analysis, request, occurredAt, driveUrl } = input;
+  const { analysis, request, occurredAt, photoUrl } = input;
   return [
     `# ${analysis.title}`,
     "",
@@ -15,11 +15,11 @@ export function buildMemoryMarkdown(input: {
     analysis.activity ? `- 활동: ${analysis.activity}` : undefined,
     `- 감정: ${analysis.mood.join(", ")}`,
     `- 태그: ${analysis.tags.join(", ")}`,
-    `- 사진: ${driveUrl}`,
+    photoUrl ? `- 사진: ${photoUrl}` : undefined,
     "",
     "## 사용자 메모",
     "",
-    request.userNote,
+    request.userNote?.trim() || "(메모 없음)",
     "",
     "## AI 정리",
     "",

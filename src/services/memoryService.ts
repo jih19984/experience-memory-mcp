@@ -23,8 +23,10 @@ export class ExperienceMemoryService {
   ) {}
 
   async saveExperienceMemory(input: SaveExperienceMemoryInput): Promise<SaveExperienceMemoryOutput> {
-    if (!input.userNote?.trim()) {
-      throw new Error("userNote is required");
+    const hasImage = Boolean(input.imagePath?.trim() || input.imageUrl?.trim() || input.imageBase64?.trim());
+    const hasUserNote = Boolean(input.userNote?.trim());
+    if (!hasImage && !hasUserNote) {
+      throw new Error("Either an image or userNote is required");
     }
     if (!input.title?.trim()) {
       throw new Error("title is required");
@@ -37,19 +39,24 @@ export class ExperienceMemoryService {
     }
 
     const occurredAt = normalizeOccurredAt(input.occurredAt);
-    const [image, analysis] = await Promise.all([loadImageAsset(input), Promise.resolve(toExperienceAnalysis(input))]);
+    const [image, analysis] = await Promise.all([
+      hasImage ? loadImageAsset(input) : Promise.resolve(undefined),
+      Promise.resolve(toExperienceAnalysis(input))
+    ]);
     const baseName = buildMemoryBaseName(occurredAt, analysis.filename || analysis.title);
-    const photoFileName = await ensureUniqueName(baseName, image.extension, (candidate) =>
-      this.dependencies.drive.exists(candidate, occurredAt)
-    );
-    const noteFileName = photoFileName.replace(/\.[^.]+$/, ".md");
+    const photoFileName = image
+      ? await ensureUniqueName(baseName, image.extension, (candidate) => this.dependencies.drive.exists(candidate, occurredAt))
+      : undefined;
+    const noteFileName = photoFileName?.replace(/\.[^.]+$/, ".md") ?? `${baseName}.md`;
 
-    const uploadedPhoto = await this.dependencies.drive.uploadPhoto({
-      fileName: photoFileName,
-      mimeType: image.mimeType,
-      buffer: image.buffer,
-      occurredAt
-    });
+    const uploadedPhoto = image
+      ? await this.dependencies.drive.uploadPhoto({
+          fileName: photoFileName as string,
+          mimeType: image.mimeType,
+          buffer: image.buffer,
+          occurredAt
+        })
+      : undefined;
     let uploadedNote: Awaited<ReturnType<DriveStorage["uploadMarkdownNote"]>> | undefined;
 
     try {
@@ -57,7 +64,7 @@ export class ExperienceMemoryService {
         analysis,
         request: input,
         occurredAt,
-        driveUrl: uploadedPhoto.webViewLink
+        photoUrl: uploadedPhoto?.webViewLink
       });
       uploadedNote = await this.dependencies.drive.uploadMarkdownNote({
         fileName: noteFileName,
@@ -69,15 +76,15 @@ export class ExperienceMemoryService {
         id: randomUUID(),
         title: analysis.title,
         summary: analysis.summary,
-        userNote: input.userNote,
+        userNote: input.userNote?.trim() ?? "",
         activity: analysis.activity,
         location: analysis.location,
         occurredAt,
         tags: analysis.tags,
         mood: analysis.mood,
-        driveFileId: uploadedPhoto.fileId,
+        driveFileId: uploadedPhoto?.fileId,
         driveNoteFileId: uploadedNote.fileId,
-        driveUrl: uploadedPhoto.webViewLink,
+        driveUrl: uploadedPhoto?.webViewLink ?? uploadedNote.webViewLink,
         markdownUrl: uploadedNote.webViewLink,
         rawAnalysis: analysis,
         createdAt: now,
@@ -90,10 +97,13 @@ export class ExperienceMemoryService {
         summary: record.summary,
         tags: record.tags,
         mood: record.mood,
-        driveUrl: record.driveUrl
+        driveUrl: record.driveUrl,
+        hasImage: Boolean(record.driveFileId)
       };
     } catch (error) {
-      await this.dependencies.drive.deleteFile(uploadedPhoto.fileId).catch(() => undefined);
+      if (uploadedPhoto) {
+        await this.dependencies.drive.deleteFile(uploadedPhoto.fileId).catch(() => undefined);
+      }
       if (uploadedNote) {
         await this.dependencies.drive.deleteFile(uploadedNote.fileId).catch(() => undefined);
       }
@@ -112,11 +122,13 @@ export class ExperienceMemoryService {
           id: row.id,
           title: row.title,
           summary: row.summary,
+          userNote: row.userNote || undefined,
           occurredAt: row.occurredAt,
           location: row.location,
           tags: row.tags,
           mood: row.mood,
           driveUrl: row.driveUrl,
+          hasImage: Boolean(row.driveFileId),
           score: row.score
         }))
     };

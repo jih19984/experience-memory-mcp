@@ -92,8 +92,61 @@ describe("ExperienceMemoryService", () => {
     expect(result.tags).toEqual(["한강", "러닝", "야경"]);
     expect(result.mood).toEqual(["힘듦", "만족", "개운함"]);
     expect(result.driveUrl).toContain("https://drive.example/");
+    expect(result.hasImage).toBe(true);
     expect(drive.uploads.map((upload) => upload.kind)).toEqual(["photo", "note"]);
     expect(repo.rows[0].rawAnalysis.title).toBe("한강 야경 러닝");
+  });
+
+  it("saves a text-only memory without uploading a photo", async () => {
+    const drive = new FakeDrive();
+    const repo = new FakeRepo();
+    const service = new ExperienceMemoryService({ drive, repo });
+
+    const result = await service.saveExperienceMemory({
+      userNote: "오늘 친구와 성수에서 전시를 봤는데 조명이 특히 기억에 남았어.",
+      title: "성수 전시 관람",
+      summary: "친구와 성수에서 전시를 보고 조명이 인상 깊었던 경험.",
+      tags: ["성수", "전시", "친구"],
+      mood: ["즐거움", "인상적"],
+      occurredAt: "2026-07-12T10:30:00.000Z",
+      locationHint: "성수"
+    });
+
+    expect(result.hasImage).toBe(false);
+    expect(result.driveUrl).toContain(".md");
+    expect(drive.uploads.map((upload) => upload.kind)).toEqual(["note"]);
+    expect(repo.rows[0].driveFileId).toBeUndefined();
+    expect(repo.rows[0].driveNoteFileId).toBe("note-file-id");
+  });
+
+  it("saves a photo-only memory when the calling LLM supplies metadata", async () => {
+    const drive = new FakeDrive();
+    const repo = new FakeRepo();
+    const service = new ExperienceMemoryService({ drive, repo });
+
+    const result = await service.saveExperienceMemory({
+      imageBase64: Buffer.from("fake-image").toString("base64"),
+      title: "공원 산책 사진",
+      summary: "공원 산책길에서 찍은 평온한 순간.",
+      tags: ["공원", "산책"],
+      mood: ["평온함"]
+    });
+
+    expect(result.hasImage).toBe(true);
+    expect(drive.uploads.map((upload) => upload.kind)).toEqual(["photo", "note"]);
+    expect(repo.rows[0].userNote).toBe("");
+  });
+
+  it("rejects empty memory requests without an image or note", async () => {
+    const service = new ExperienceMemoryService({ drive: new FakeDrive(), repo: new FakeRepo() });
+
+    await expect(
+      service.saveExperienceMemory({
+        title: "빈 기억",
+        summary: "입력이 없는 기억.",
+        tags: ["빈값"]
+      })
+    ).rejects.toThrow(/Either an image or userNote is required/);
   });
 
   it("searches memories with default limit using repository text search", async () => {

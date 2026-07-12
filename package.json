@@ -1,7 +1,7 @@
 {
   "name": "experience-memory-mcp",
   "version": "0.1.0",
-  "description": "MCP server that stores photo-backed experience memories and retrieves them by natural language.",
+  "description": "MCP server that stores photo or text experience memories and retrieves them by natural language.",
   "type": "module",
   "bin": {
     "experience-memory-mcp": "./dist/index.js"
