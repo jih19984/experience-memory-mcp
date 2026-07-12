@@ -21,6 +21,7 @@ export interface HttpServerConfig {
   googleOAuthCallbackPath: string;
   actorProvider: string;
   actorHeaderNames: string[];
+  defaultActorId?: string;
 }
 
 const DEFAULT_ACTOR_HEADERS = ["x-playmcp-user-id", "x-kakao-user-id", "x-mcp-user-id", "x-user-id", "mcp-user-id"];
@@ -33,7 +34,8 @@ export function resolveHttpServerConfig(env: NodeJS.ProcessEnv = process.env): H
     healthPath: normalizePath(env.HEALTH_PATH ?? "/healthz"),
     googleOAuthCallbackPath: normalizePath(env.GOOGLE_OAUTH_CALLBACK_PATH ?? "/oauth/google/callback"),
     actorProvider: env.EXPERIENCE_MEMORY_ACTOR_PROVIDER ?? "kakao",
-    actorHeaderNames: resolveActorHeaderNames(env)
+    actorHeaderNames: resolveActorHeaderNames(env),
+    defaultActorId: env.EXPERIENCE_MEMORY_DEFAULT_ACTOR_ID?.trim() || undefined
   };
 }
 
@@ -51,7 +53,7 @@ export function shouldHandleMcpRequest(request: Request, config: Pick<HttpServer
 
 export function extractActorFromRequest(
   request: Request,
-  config: Pick<HttpServerConfig, "actorProvider" | "actorHeaderNames">
+  config: Pick<HttpServerConfig, "actorProvider" | "actorHeaderNames" | "defaultActorId">
 ): ExperienceActor | undefined {
   for (const headerName of config.actorHeaderNames) {
     const value = request.headers.get(headerName)?.trim();
@@ -61,6 +63,12 @@ export function extractActorFromRequest(
         providerUserId: value
       };
     }
+  }
+  if (config.defaultActorId) {
+    return {
+      provider: config.actorProvider,
+      providerUserId: config.defaultActorId
+    };
   }
   return undefined;
 }

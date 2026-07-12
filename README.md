@@ -26,6 +26,7 @@ MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
 GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
 EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
+EXPERIENCE_MEMORY_DEFAULT_ACTOR_ID=playmcp-demo
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 ```
@@ -122,6 +123,7 @@ Docker 컨테이너는 기본적으로 `PORT=8000`에서 HTTP MCP endpoint를 �
 
 ```env
 EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
+EXPERIENCE_MEMORY_DEFAULT_ACTOR_ID=playmcp-demo
 ```
 
 이 모드는 컨테이너 재시작/재배포 시 데이터가 유지된다는 보장이 없습니다. 실제 운영 또는 장기 유지 단계에서는 외부 PostgreSQL을 만들고 아래처럼 전환합니다.
@@ -149,6 +151,7 @@ MCP_HTTP_PATH=/mcp
 HEALTH_PATH=/healthz
 GOOGLE_OAUTH_CALLBACK_PATH=/oauth/google/callback
 EXPERIENCE_MEMORY_DATA_DIR=/tmp/experience-memory
+EXPERIENCE_MEMORY_DEFAULT_ACTOR_ID=playmcp-demo
 ```
 
 시크릿:

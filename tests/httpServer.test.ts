@@ -49,4 +49,19 @@ describe("HTTP MCP endpoint", () => {
       providerUserId: "kakao-user-123"
     });
   });
+
+  it("uses a configured default actor when the MCP host does not send a user header", () => {
+    const request = new Request("http://localhost:3000/mcp");
+
+    expect(
+      extractActorFromRequest(request, {
+        actorProvider: "kakao",
+        actorHeaderNames: ["x-playmcp-user-id"],
+        defaultActorId: "playmcp-demo"
+      })
+    ).toEqual({
+      provider: "kakao",
+      providerUserId: "playmcp-demo"
+    });
+  });
 });
