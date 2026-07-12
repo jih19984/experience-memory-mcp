@@ -3,6 +3,7 @@ import {
   createHealthResponse,
   extractActorFromRequest,
   extractBearerTokenFromRequest,
+  buildGoogleOAuthRedirectUri,
   resolveHttpServerConfig,
   shouldHandleMcpRequest
 } from "../src/http/server.js";
@@ -72,5 +73,21 @@ describe("HTTP MCP endpoint", () => {
     });
 
     expect(extractBearerTokenFromRequest(request)).toBe("google-access-token");
+  });
+
+  it("builds HTTPS Google OAuth callbacks for public cloud hosts", () => {
+    const redirectUri = buildGoogleOAuthRedirectUri(new Request("http://experience-memory-mcp.playmcp-endpoint.kakaocloud.io/mcp"), {
+      googleOAuthCallbackPath: "/oauth/google/callback"
+    });
+
+    expect(redirectUri).toBe("https://experience-memory-mcp.playmcp-endpoint.kakaocloud.io/oauth/google/callback");
+  });
+
+  it("keeps HTTP Google OAuth callbacks for localhost development", () => {
+    const redirectUri = buildGoogleOAuthRedirectUri(new Request("http://localhost:8000/mcp"), {
+      googleOAuthCallbackPath: "/oauth/google/callback"
+    });
+
+    expect(redirectUri).toBe("http://localhost:8000/oauth/google/callback");
   });
 });

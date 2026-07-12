@@ -124,12 +124,13 @@ export async function startHttpServer(config: HttpServerConfig = resolveHttpServ
   console.error(`Experience Memory MCP listening on http://${config.host}:${config.port}${config.mcpPath}`);
 }
 
-function buildGoogleOAuthRedirectUri(
+export function buildGoogleOAuthRedirectUri(
   request: Request,
   config: Pick<HttpServerConfig, "googleOAuthCallbackPath">
 ): string {
   const url = new URL(request.url);
-  return `${url.origin}${config.googleOAuthCallbackPath}`;
+  const protocol = url.protocol === "http:" && !isLocalHostname(url.hostname) ? "https:" : url.protocol;
+  return `${protocol}//${url.host}${config.googleOAuthCallbackPath}`;
 }
 
 export async function handleGoogleOAuthCallback(request: Request): Promise<Response> {
@@ -187,6 +188,10 @@ function normalizePath(path: string): string {
     return "/";
   }
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function isLocalHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function toWebRequest(nodeRequest: IncomingMessage): Request {
