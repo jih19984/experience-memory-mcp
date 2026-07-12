@@ -17,7 +17,10 @@ function jsonResponse(output: unknown) {
 
 function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  return jsonResponse({ error: message });
+  return {
+    ...jsonResponse({ error: message }),
+    isError: true
+  };
 }
 
 export const experienceMemoryToolDefinitions = [
