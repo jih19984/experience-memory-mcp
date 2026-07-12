@@ -52,4 +52,12 @@ describe("Experience Memory MCP server", () => {
       true
     );
   });
+
+  it("keeps PlayMCP tool metadata contest-ready", () => {
+    for (const tool of getExperienceMemoryToolDefinitions({})) {
+      expect(tool.annotations.title).toBe(tool.title);
+      expect(tool.description).toContain("Experience Memory MCP(기억주머니)");
+      expect(tool.description.length).toBeLessThanOrEqual(1024);
+    }
+  });
 });

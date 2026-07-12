@@ -16,19 +16,38 @@ function jsonResponse(output: unknown) {
 }
 
 function errorResponse(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = safeErrorMessage(error);
   return {
     ...jsonResponse({ error: message }),
     isError: true
   };
 }
 
+function safeErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/Google Drive authentication is missing/i.test(message)) {
+    return "Google Drive authentication is missing. Please connect Google OAuth in PlayMCP and retry.";
+  }
+  if (/Request is missing required authentication credential/i.test(message)) {
+    return "Google authentication failed. Please reconnect Google Drive and retry.";
+  }
+  if (/Google Drive is not connected/i.test(message)) {
+    return "Google Drive is not connected for this user. Please connect Google Drive first.";
+  }
+  if (/Missing Google Drive configuration/i.test(message)) {
+    return "Google Drive configuration is missing. Please check OAuth settings.";
+  }
+  return message.replace(/https?:\/\/\S+/g, "[link removed]");
+}
+
 export const experienceMemoryToolDefinitions = [
   {
     name: "connectGoogleDrive",
     title: "Google Drive 연결",
-    description: "현재 사용자의 Google Drive를 연결할 수 있는 인증 URL을 생성합니다.",
+    description:
+      "Creates a Google Drive connection URL for Experience Memory MCP(기억주머니). Use only when the MCP host does not provide PlayMCP OAuth.",
     annotations: {
+      title: "Google Drive 연결",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
@@ -38,8 +57,10 @@ export const experienceMemoryToolDefinitions = [
   {
     name: "saveExperienceMemory",
     title: "경험 기억 저장",
-    description: "사진, 메모, 또는 사진과 메모를 하나의 경험 기억으로 저장합니다. 호출한 LLM이 정리한 제목, 요약, 태그, 감정을 함께 저장합니다.",
+    description:
+      "Stores a photo, text note, or both as a personal memory in Experience Memory MCP(기억주머니). The calling LLM provides the title, summary, tags, and mood.",
     annotations: {
+      title: "경험 기억 저장",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
@@ -49,8 +70,10 @@ export const experienceMemoryToolDefinitions = [
   {
     name: "searchExperienceMemories",
     title: "경험 기억 검색",
-    description: "저장된 경험 기억을 자연어, 날짜, 태그, 감정 조건으로 검색합니다.",
+    description:
+      "Searches saved personal memories in Experience Memory MCP(기억주머니) by natural language, date range, tags, and mood.",
     annotations: {
+      title: "경험 기억 검색",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
@@ -60,8 +83,10 @@ export const experienceMemoryToolDefinitions = [
   {
     name: "updateExperienceMemory",
     title: "경험 기억 수정",
-    description: "저장된 경험 기억의 제목, 요약, 태그, 감정 등 메타데이터를 수정하고 Markdown 노트를 다시 생성합니다. 원본 사진은 교체하지 않습니다.",
+    description:
+      "Updates the title, summary, note, tags, mood, date, activity, or location of a memory in Experience Memory MCP(기억주머니). The original photo is not replaced.",
     annotations: {
+      title: "경험 기억 수정",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
@@ -71,8 +96,10 @@ export const experienceMemoryToolDefinitions = [
   {
     name: "deleteExperienceMemory",
     title: "경험 기억 삭제",
-    description: "저장된 경험 기억 하나와 연결된 Google Drive 사진 및 Markdown 노트 파일을 삭제합니다.",
+    description:
+      "Deletes one saved memory from Experience Memory MCP(기억주머니), including linked Google Drive photo and Markdown note files when present.",
     annotations: {
+      title: "경험 기억 삭제",
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
@@ -82,8 +109,10 @@ export const experienceMemoryToolDefinitions = [
   {
     name: "debugRequestContext",
     title: "요청 인증 진단",
-    description: "PlayMCP가 OAuth 인증 정보를 MCP 서버로 전달하는지 확인하기 위해 민감하지 않은 요청 정보만 점검합니다.",
+    description:
+      "Checks non-sensitive request authentication diagnostics for Experience Memory MCP(기억주머니). Enable only during PlayMCP OAuth troubleshooting.",
     annotations: {
+      title: "요청 인증 진단",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,

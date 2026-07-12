@@ -4,6 +4,12 @@
 
 이 MVP는 호출 LLM 위임형입니다. 카카오톡/ChatGPT/Claude 같은 대화 중인 LLM이 사진이나 메모를 보고 제목, 요약, 태그, 감정을 정리한 뒤 MCP tool을 호출합니다. MCP 서버는 AI API를 다시 호출하지 않고, 사진이 있으면 원본을 Google Drive에 저장하고 항상 Markdown 메모와 검색용 메타데이터를 저장합니다.
 
+## Submission name
+
+- MCP 표시 이름: `기억메모리 Ver 2`
+- MCP 식별자: `memoryPocket`
+- MCP 설명: `사진과 짧은 메모를 Google Drive에 저장하고, 나중에 자연어로 다시 찾거나 수정/삭제할 수 있는 개인 경험 기억 MCP입니다. 호출 중인 LLM이 제목, 요약, 태그, 감정을 정리하고 Experience Memory MCP(기억주머니)는 사용자의 Drive에 사진과 Markdown 메모를 저장합니다.`
+
 ## Tools
 
 - `saveExperienceMemory`: 사진, 메모, 또는 사진+메모 경험 저장
@@ -12,6 +18,12 @@
 - `deleteExperienceMemory`: 저장된 경험과 연결된 Google Drive 사진/Markdown 메모 삭제
 
 PlayMCP OAuth 배포에서는 수동 연결 tool을 기본으로 숨깁니다. PlayMCP가 아닌 MCP host에서 actor header 기반 수동 Google Drive 연결이 필요할 때만 `EXPERIENCE_MEMORY_ENABLE_MANUAL_DRIVE_CONNECT=true`를 설정하면 `connectGoogleDrive`가 노출됩니다.
+
+## Search strategy
+
+현재 버전은 OpenAI API key 없이 동작하는 metadata search입니다. 저장 시 호출 LLM이 넘긴 제목, 요약, 메모, 태그, 감정, 활동, 장소를 사용자별 저장소에 보관하고, 검색 tool은 이 텍스트 메타데이터를 기준으로 관련 기억을 찾습니다.
+
+RAG형 semantic search로 확장하려면 저장 시 Markdown 메모를 chunk로 나누고 embedding을 생성해 pgvector 같은 vector store에 저장해야 합니다. 이 방식은 서버가 embedding을 직접 만들기 때문에 `OPENAI_API_KEY` 또는 다른 embedding provider key가 필요합니다. PlayMCP 제출용 MVP에서는 비용과 인증 복잡도를 줄이기 위해 호출 LLM 위임형 metadata search를 기본값으로 둡니다.
 
 ## Setup
 
@@ -153,7 +165,7 @@ DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/experience_memory
 
 기본 정보:
 
-- MCP 서버 이름: `experience-memory-mcp`
+- MCP 서버 이름: `experience-memory-mcp-v2`
 - 설명: `사진과 메모를 Google Drive에 저장하고 자연어로 경험 기억을 검색하는 MCP 서버`
 - Git URL: `https://github.com/jih19984/experience-memory-mcp.git`
 - 브랜치 / ref: `main`
