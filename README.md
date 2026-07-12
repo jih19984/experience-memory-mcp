@@ -6,11 +6,12 @@
 
 ## Tools
 
-- `connectGoogleDrive`: 수동 Google Drive 연결 URL 생성. PlayMCP OAuth 방식에서는 보통 사용하지 않습니다.
 - `saveExperienceMemory`: 사진, 메모, 또는 사진+메모 경험 저장
 - `searchExperienceMemories`: 자연어로 경험 검색
 - `updateExperienceMemory`: 저장된 경험의 제목, 요약, 메모, 태그, 감정, 날짜, 활동, 장소 수정
 - `deleteExperienceMemory`: 저장된 경험과 연결된 Google Drive 사진/Markdown 메모 삭제
+
+PlayMCP OAuth 배포에서는 수동 연결 tool을 기본으로 숨깁니다. PlayMCP가 아닌 MCP host에서 actor header 기반 수동 Google Drive 연결이 필요할 때만 `EXPERIENCE_MEMORY_ENABLE_MANUAL_DRIVE_CONNECT=true`를 설정하면 `connectGoogleDrive`가 노출됩니다.
 
 ## Setup
 
@@ -47,11 +48,11 @@ Grant Type: AUTHORIZATION_CODE
 
 PlayMCP가 이메일로 보내는 Redirect URI는 Google Cloud Console의 OAuth Client에 Authorized redirect URI로 추가해야 합니다.
 
-수동 Google Drive 연결도 fallback으로 지원합니다. 각 사용자가 `connectGoogleDrive` tool이 반환하는 Google OAuth URL을 열어 로그인하면, actor별 refresh token과 Drive root folder id가 암호화 저장됩니다.
+수동 Google Drive 연결도 fallback으로 지원합니다. `EXPERIENCE_MEMORY_ENABLE_MANUAL_DRIVE_CONNECT=true`로 켠 뒤 각 사용자가 `connectGoogleDrive` tool이 반환하는 Google OAuth URL을 열어 로그인하면, actor별 refresh token과 Drive root folder id가 암호화 저장됩니다.
 
 단일 사용자 `.env` 방식도 로컬 테스트용으로만 지원합니다. 이 경우 `GOOGLE_REFRESH_TOKEN`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`에 들어간 계정의 Drive에 저장되므로 public/multi-user 배포에는 사용하지 않습니다.
 
-Google Drive 연결 전에는 `connectGoogleDrive`로 사용자 개인 Drive를 먼저 연결해야 합니다.
+PlayMCP OAuth 방식이 아닌 fallback 연결에서는 Google Drive 연결 전 `connectGoogleDrive`로 사용자 개인 Drive를 먼저 연결해야 합니다.
 
 ## Google Drive 연결
 
@@ -185,7 +186,7 @@ Endpoint URL이 발급되면 Google Cloud Console의 OAuth Client에 아래 Auth
 https://<발급받은-endpoint-host>/oauth/google/callback
 ```
 
-그 뒤 사용자가 처음 저장하려 할 때 `connectGoogleDrive` tool을 호출해 개인 Google Drive를 연결합니다.
+수동 fallback을 쓸 때는 `EXPERIENCE_MEMORY_ENABLE_MANUAL_DRIVE_CONNECT=true`를 설정한 뒤, 사용자가 처음 저장하려 할 때 `connectGoogleDrive` tool을 호출해 개인 Google Drive를 연결합니다. PlayMCP OAuth 배포에서는 이 값을 설정하지 않습니다.
 
 ## MCP 설정 예시
 

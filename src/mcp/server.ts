@@ -78,10 +78,21 @@ export const experienceMemoryToolDefinitions = [
   }
 ] as const;
 
+export function shouldExposeManualDriveConnect(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.EXPERIENCE_MEMORY_ENABLE_MANUAL_DRIVE_CONNECT === "true";
+}
+
+export function getExperienceMemoryToolDefinitions(env: NodeJS.ProcessEnv = process.env) {
+  return shouldExposeManualDriveConnect(env)
+    ? experienceMemoryToolDefinitions
+    : experienceMemoryToolDefinitions.filter((tool) => tool.name !== "connectGoogleDrive");
+}
+
 export interface ExperienceMemoryServerOptions {
   getService?: (ctx: ServerContext) => Promise<ExperienceMemoryService>;
   getActor?: (ctx: ServerContext) => ExperienceActor | undefined;
   getGoogleOAuthRedirectUri?: () => string | undefined;
+  exposeManualDriveConnect?: boolean;
 }
 
 export function createExperienceMemoryServer(options: ExperienceMemoryServerOptions = {}): McpServer {
@@ -98,27 +109,29 @@ export function createExperienceMemoryServer(options: ExperienceMemoryServerOpti
     }
   );
 
-  server.registerTool(
-    "connectGoogleDrive",
-    {
-      title: experienceMemoryToolDefinitions[0].title,
-      description: experienceMemoryToolDefinitions[0].description,
-      annotations: experienceMemoryToolDefinitions[0].annotations,
-      inputSchema: connectGoogleDriveInputSchema
-    },
-    async (input, ctx) => {
-      try {
-        return jsonResponse(
-          await connectGoogleDrive(input, {
-            actor: options.getActor?.(ctx),
-            redirectUri: options.getGoogleOAuthRedirectUri?.()
-          })
-        );
-      } catch (error) {
-        return errorResponse(error);
+  if (options.exposeManualDriveConnect ?? shouldExposeManualDriveConnect()) {
+    server.registerTool(
+      "connectGoogleDrive",
+      {
+        title: experienceMemoryToolDefinitions[0].title,
+        description: experienceMemoryToolDefinitions[0].description,
+        annotations: experienceMemoryToolDefinitions[0].annotations,
+        inputSchema: connectGoogleDriveInputSchema
+      },
+      async (input, ctx) => {
+        try {
+          return jsonResponse(
+            await connectGoogleDrive(input, {
+              actor: options.getActor?.(ctx),
+              redirectUri: options.getGoogleOAuthRedirectUri?.()
+            })
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       }
-    }
-  );
+    );
+  }
 
   server.registerTool(
     "saveExperienceMemory",
