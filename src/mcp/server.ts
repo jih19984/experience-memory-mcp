@@ -75,6 +75,17 @@ export const experienceMemoryToolDefinitions = [
       idempotentHint: true,
       openWorldHint: true
     }
+  },
+  {
+    name: "debugRequestContext",
+    title: "Debug Request Context",
+    description: "Inspect non-secret request context fields to diagnose PlayMCP authentication forwarding.",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
   }
 ] as const;
 
@@ -83,16 +94,28 @@ export function shouldExposeManualDriveConnect(env: NodeJS.ProcessEnv = process.
 }
 
 export function getExperienceMemoryToolDefinitions(env: NodeJS.ProcessEnv = process.env) {
-  return shouldExposeManualDriveConnect(env)
-    ? experienceMemoryToolDefinitions
-    : experienceMemoryToolDefinitions.filter((tool) => tool.name !== "connectGoogleDrive");
+  return experienceMemoryToolDefinitions.filter((tool) => {
+    if (tool.name === "connectGoogleDrive") {
+      return shouldExposeManualDriveConnect(env);
+    }
+    if (tool.name === "debugRequestContext") {
+      return shouldExposeDebugRequestContext(env);
+    }
+    return true;
+  });
+}
+
+export function shouldExposeDebugRequestContext(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.EXPERIENCE_MEMORY_ENABLE_DEBUG_CONTEXT === "true";
 }
 
 export interface ExperienceMemoryServerOptions {
   getService?: (ctx: ServerContext) => Promise<ExperienceMemoryService>;
   getActor?: (ctx: ServerContext) => ExperienceActor | undefined;
   getGoogleOAuthRedirectUri?: () => string | undefined;
+  getRequestDiagnostics?: () => unknown;
   exposeManualDriveConnect?: boolean;
+  exposeDebugRequestContext?: boolean;
 }
 
 export function createExperienceMemoryServer(options: ExperienceMemoryServerOptions = {}): McpServer {
@@ -200,6 +223,25 @@ export function createExperienceMemoryServer(options: ExperienceMemoryServerOpti
       }
     }
   );
+
+  if (options.exposeDebugRequestContext ?? shouldExposeDebugRequestContext()) {
+    server.registerTool(
+      "debugRequestContext",
+      {
+        title: experienceMemoryToolDefinitions[5].title,
+        description: experienceMemoryToolDefinitions[5].description,
+        annotations: experienceMemoryToolDefinitions[5].annotations,
+        inputSchema: {}
+      },
+      async (_input, ctx) => {
+        try {
+          return jsonResponse(options.getRequestDiagnostics?.() ?? { error: "Request diagnostics are unavailable for this transport." });
+        } catch (error) {
+          return errorResponse(error);
+        }
+      }
+    );
+  }
 
   return server;
 }

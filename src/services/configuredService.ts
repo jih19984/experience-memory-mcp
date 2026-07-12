@@ -69,6 +69,12 @@ export async function getConfiguredExperienceMemoryService(
     });
   }
 
+  if (!hasLegacyGoogleDriveConfig()) {
+    throw new Error(
+      "Google Drive authentication is missing. PlayMCP did not forward a Google OAuth Bearer token, and no fallback Google Drive credentials are configured."
+    );
+  }
+
   return new ExperienceMemoryService({
     drive: new GoogleDriveStorage(),
     repo: createMemoryRepository()
@@ -81,4 +87,16 @@ export function createGoogleConnectionRepository() {
 
 function createMemoryRepository(userId?: string) {
   return process.env.DATABASE_URL ? new PostgresMemoryRepository(undefined, userId) : new LocalMemoryRepository(undefined, userId);
+}
+
+function hasLegacyGoogleDriveConfig(): boolean {
+  if (process.env.GOOGLE_ACCESS_TOKEN?.trim()) {
+    return true;
+  }
+  return Boolean(
+    process.env.GOOGLE_CLIENT_ID?.trim() &&
+      process.env.GOOGLE_CLIENT_SECRET?.trim() &&
+      process.env.GOOGLE_REFRESH_TOKEN?.trim() &&
+      process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID?.trim()
+  );
 }

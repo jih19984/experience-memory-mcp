@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getExperienceMemoryToolDefinitions,
+  shouldExposeDebugRequestContext,
   shouldExposeManualDriveConnect,
   experienceMemoryToolDefinitions
 } from "../src/mcp/server.js";
@@ -31,6 +32,18 @@ describe("Experience Memory MCP server", () => {
       "searchExperienceMemories",
       "updateExperienceMemory",
       "deleteExperienceMemory"
+    ]);
+  });
+
+  it("can expose request context diagnostics only when explicitly enabled", () => {
+    expect(shouldExposeDebugRequestContext({})).toBe(false);
+    expect(shouldExposeDebugRequestContext({ EXPERIENCE_MEMORY_ENABLE_DEBUG_CONTEXT: "true" })).toBe(true);
+    expect(getExperienceMemoryToolDefinitions({ EXPERIENCE_MEMORY_ENABLE_DEBUG_CONTEXT: "true" }).map((tool) => tool.name)).toEqual([
+      "saveExperienceMemory",
+      "searchExperienceMemories",
+      "updateExperienceMemory",
+      "deleteExperienceMemory",
+      "debugRequestContext"
     ]);
   });
 

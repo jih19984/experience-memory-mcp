@@ -90,6 +90,7 @@ export async function startHttpServer(config: HttpServerConfig = resolveHttpServ
     return createExperienceMemoryServer({
       getActor: () => actor,
       getGoogleOAuthRedirectUri: () => googleOAuthRedirectUri,
+      getRequestDiagnostics: () => buildRequestDiagnostics(ctx.requestInfo),
       getService: () => getConfiguredExperienceMemoryService({ actor, googleAccessToken })
     });
   });
@@ -131,6 +132,25 @@ export function buildGoogleOAuthRedirectUri(
   const url = new URL(request.url);
   const protocol = url.protocol === "http:" && !isLocalHostname(url.hostname) ? "https:" : url.protocol;
   return `${protocol}//${url.host}${config.googleOAuthCallbackPath}`;
+}
+
+export function buildRequestDiagnostics(request?: Request) {
+  const headers = request?.headers;
+  const headerNames: string[] = [];
+  headers?.forEach((_value, name) => {
+    headerNames.push(name);
+  });
+  headerNames.sort();
+  const authorization = headers?.get("authorization")?.trim();
+  const authMatch = authorization ? /^([A-Za-z]+)\s+(.+)$/i.exec(authorization) : undefined;
+  return {
+    hasRequestInfo: Boolean(request),
+    authHeaderPresent: Boolean(authorization),
+    authHeaderScheme: authMatch?.[1] ?? null,
+    authHeaderTokenLength: authMatch?.[2]?.length ?? 0,
+    relevantHeaderNames: headerNames.filter((name) => isRelevantDebugHeader(name)),
+    note: "Token values are intentionally hidden. If authHeaderPresent is false, PlayMCP is not forwarding a Bearer token to the MCP container."
+  };
 }
 
 export async function handleGoogleOAuthCallback(request: Request): Promise<Response> {
@@ -192,6 +212,19 @@ function normalizePath(path: string): string {
 
 function isLocalHostname(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function isRelevantDebugHeader(name: string): boolean {
+  const normalized = name.toLowerCase();
+  return (
+    normalized.includes("auth") ||
+    normalized.includes("oauth") ||
+    normalized.includes("token") ||
+    normalized.includes("user") ||
+    normalized.includes("mcp") ||
+    normalized.includes("kakao") ||
+    normalized.startsWith("x-forwarded")
+  );
 }
 
 function toWebRequest(nodeRequest: IncomingMessage): Request {

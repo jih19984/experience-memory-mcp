@@ -4,6 +4,7 @@ import {
   extractActorFromRequest,
   extractBearerTokenFromRequest,
   buildGoogleOAuthRedirectUri,
+  buildRequestDiagnostics,
   resolveHttpServerConfig,
   shouldHandleMcpRequest
 } from "../src/http/server.js";
@@ -73,6 +74,24 @@ describe("HTTP MCP endpoint", () => {
     });
 
     expect(extractBearerTokenFromRequest(request)).toBe("google-access-token");
+  });
+
+  it("reports request auth diagnostics without exposing token values", () => {
+    const diagnostics = buildRequestDiagnostics(
+      new Request("http://localhost:3000/mcp", {
+        headers: {
+          authorization: "Bearer google-access-token",
+          "x-forwarded-for": "127.0.0.1",
+          "x-playmcp-user-id": "user-1"
+        }
+      })
+    );
+
+    expect(diagnostics.authHeaderPresent).toBe(true);
+    expect(diagnostics.authHeaderScheme).toBe("Bearer");
+    expect(diagnostics.authHeaderTokenLength).toBe("google-access-token".length);
+    expect(JSON.stringify(diagnostics)).not.toContain("google-access-token");
+    expect(diagnostics.relevantHeaderNames).toContain("authorization");
   });
 
   it("builds HTTPS Google OAuth callbacks for public cloud hosts", () => {

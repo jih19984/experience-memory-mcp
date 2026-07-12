@@ -8,9 +8,10 @@ describe("configured ExperienceMemoryService", () => {
     vi.resetModules();
   });
 
-  it("does not fall back to local storage when Google Drive configuration is missing", async () => {
+  it("explains when PlayMCP OAuth did not provide a Google token and fallback Drive credentials are missing", async () => {
     delete process.env.EXPERIENCE_MEMORY_MODE;
     delete process.env.DATABASE_URL;
+    delete process.env.GOOGLE_ACCESS_TOKEN;
     delete process.env.GOOGLE_CLIENT_ID;
     delete process.env.GOOGLE_CLIENT_SECRET;
     delete process.env.GOOGLE_REFRESH_TOKEN;
@@ -18,7 +19,7 @@ describe("configured ExperienceMemoryService", () => {
 
     const { getConfiguredExperienceMemoryService } = await import("../src/services/configuredService.js");
 
-    await expect(getConfiguredExperienceMemoryService()).rejects.toThrow(/Missing Google Drive configuration/);
+    await expect(getConfiguredExperienceMemoryService()).rejects.toThrow(/PlayMCP did not forward a Google OAuth Bearer token/);
   });
 
   it("requires both actor provider and actor id when actor mode is requested", async () => {
