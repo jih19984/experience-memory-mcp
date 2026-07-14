@@ -7,8 +7,8 @@
 ## Submission name
 
 - MCP 표시 이름: `기억메모리 Ver 2`
-- MCP 식별자: `memoryPocket`
-- MCP 설명: `사진과 짧은 메모를 Google Drive에 저장하고, 나중에 자연어로 다시 찾거나 수정/삭제할 수 있는 개인 경험 기억 MCP입니다. 호출 중인 LLM이 제목, 요약, 태그, 감정을 정리하고 Experience Memory MCP(기억주머니)는 사용자의 Drive에 사진과 Markdown 메모를 저장합니다.`
+- MCP 식별자: `memoryv2`
+- MCP 설명: `사진과 짧은 메모를 Google Drive에 저장하고, 나중에 자연어로 다시 찾거나 수정/삭제할 수 있는 개인 경험 기억 MCP입니다. 호출 중인 LLM이 제목, 요약, 태그, 감정을 정리하고 기억메모리 Ver 2는 사용자의 Drive에 사진과 Markdown 메모를 저장합니다.`
 
 ## Tools
 

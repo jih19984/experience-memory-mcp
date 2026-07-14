@@ -23,6 +23,8 @@ function errorResponse(error: unknown) {
   };
 }
 
+const PLAY_MCP_SERVICE_NAME = "기억메모리 Ver 2";
+
 function safeErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/Google Drive authentication is missing/i.test(message)) {
@@ -45,7 +47,7 @@ export const experienceMemoryToolDefinitions = [
     name: "connectGoogleDrive",
     title: "Google Drive 연결",
     description:
-      "Creates a Google Drive connection URL for Experience Memory MCP(기억주머니). Use only when the MCP host does not provide PlayMCP OAuth.",
+      `Creates a Google Drive connection URL for ${PLAY_MCP_SERVICE_NAME}. Use only when the MCP host does not provide PlayMCP OAuth.`,
     annotations: {
       title: "Google Drive 연결",
       readOnlyHint: false,
@@ -58,7 +60,7 @@ export const experienceMemoryToolDefinitions = [
     name: "saveExperienceMemory",
     title: "경험 기억 저장",
     description:
-      "Stores a photo, text note, or both as a personal memory in Experience Memory MCP(기억주머니). The calling LLM provides the title, summary, tags, and mood.",
+      `Stores a photo, text note, or both as a personal memory in ${PLAY_MCP_SERVICE_NAME}. The calling LLM provides the title, summary, tags, and mood.`,
     annotations: {
       title: "경험 기억 저장",
       readOnlyHint: false,
@@ -71,7 +73,7 @@ export const experienceMemoryToolDefinitions = [
     name: "searchExperienceMemories",
     title: "경험 기억 검색",
     description:
-      "Searches saved personal memories in Experience Memory MCP(기억주머니) by natural language, date range, tags, and mood.",
+      `Searches saved personal memories in ${PLAY_MCP_SERVICE_NAME} by natural language, date range, tags, and mood.`,
     annotations: {
       title: "경험 기억 검색",
       readOnlyHint: true,
@@ -84,7 +86,7 @@ export const experienceMemoryToolDefinitions = [
     name: "updateExperienceMemory",
     title: "경험 기억 수정",
     description:
-      "Updates the title, summary, note, tags, mood, date, activity, or location of a memory in Experience Memory MCP(기억주머니). The original photo is not replaced.",
+      `Updates the title, summary, note, tags, mood, date, activity, or location of a memory in ${PLAY_MCP_SERVICE_NAME}. The original photo is not replaced.`,
     annotations: {
       title: "경험 기억 수정",
       readOnlyHint: false,
@@ -97,7 +99,7 @@ export const experienceMemoryToolDefinitions = [
     name: "deleteExperienceMemory",
     title: "경험 기억 삭제",
     description:
-      "Deletes one saved memory from Experience Memory MCP(기억주머니), including linked Google Drive photo and Markdown note files when present.",
+      `Deletes one saved memory from ${PLAY_MCP_SERVICE_NAME}, including linked Google Drive photo and Markdown note files when present.`,
     annotations: {
       title: "경험 기억 삭제",
       readOnlyHint: false,
@@ -110,7 +112,7 @@ export const experienceMemoryToolDefinitions = [
     name: "debugRequestContext",
     title: "요청 인증 진단",
     description:
-      "Checks non-sensitive request authentication diagnostics for Experience Memory MCP(기억주머니). Enable only during PlayMCP OAuth troubleshooting.",
+      `Checks non-sensitive request authentication diagnostics for ${PLAY_MCP_SERVICE_NAME}. Enable only during PlayMCP OAuth troubleshooting.`,
     annotations: {
       title: "요청 인증 진단",
       readOnlyHint: true,

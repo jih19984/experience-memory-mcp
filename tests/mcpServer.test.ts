@@ -56,7 +56,7 @@ describe("Experience Memory MCP server", () => {
   it("keeps PlayMCP tool metadata contest-ready", () => {
     for (const tool of getExperienceMemoryToolDefinitions({})) {
       expect(tool.annotations.title).toBe(tool.title);
-      expect(tool.description).toContain("Experience Memory MCP(기억주머니)");
+      expect(tool.description).toContain("기억메모리 Ver 2");
       expect(tool.description.length).toBeLessThanOrEqual(1024);
     }
   });
